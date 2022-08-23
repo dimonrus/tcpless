@@ -6,6 +6,8 @@ import (
 	"github.com/dimonrus/gocli"
 	"net"
 	"os"
+	"strconv"
+	"sync"
 	"testing"
 	"time"
 )
@@ -39,7 +41,7 @@ func Hello(ctx context.Context, sig Signature) {
 	}
 	//rps++
 	//fmt.Println(n)
-	//fmt.Println(string(data))
+	fmt.Println(string(data))
 	//sig.Stream().Write([]byte("done"))
 }
 
@@ -70,77 +72,27 @@ func TestClient(t *testing.T) {
 		Port: 900,
 	}
 
-	requests := 1_000_000
-	wait := make(chan struct{}, 3)
+	requests := 1_0
+	parallel := 6
 
-	go func() {
-		conn1, err := net.DialTCP("tcp", nil, address)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for i := 0; i < requests; i++ {
-			message := CreateMessage("Hello", []byte("HelloWorld"))
-			_, err = conn1.Write(message)
+	wg := sync.WaitGroup{}
+	wg.Add(parallel)
+	for i := 0; i < parallel; i++ {
+		go func() {
+			defer wg.Done()
+			conn, err := net.DialTCP("tcp", nil, address)
 			if err != nil {
 				t.Fatal(err)
 			}
-		}
-		wait <- struct{}{}
-	}()
-
-	go func() {
-		conn2, err := net.DialTCP("tcp", nil, address)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for i := 0; i < requests; i++ {
-			message := CreateMessage("Hello", []byte("HelloWorld"))
-			_, err = conn2.Write(message)
-			if err != nil {
-				t.Fatal(err)
+			for j := 0; j < requests; j++ {
+				message := CreateMessage("Hello", []byte("HelloWorld"+strconv.FormatInt(int64(j), 10)))
+				_, err = conn.Write(message)
+				if err != nil {
+					t.Fatal(err)
+				}
 			}
-		}
-		wait <- struct{}{}
-	}()
-
-	go func() {
-		conn3, err := net.DialTCP("tcp", nil, address)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for i := 0; i < requests; i++ {
-			message := CreateMessage("Hello", []byte("HelloWorld"))
-			_, err = conn3.Write(message)
-			if err != nil {
-				t.Fatal(err)
-			}
-		}
-		wait <- struct{}{}
-	}()
-
-	go func() {
-		conn4, err := net.DialTCP("tcp", nil, address)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for i := 0; i < requests; i++ {
-			message := CreateMessage("StatusMessage", []byte("StatusMessageExists"))
-			_, err = conn4.Write(message)
-			if err != nil {
-				t.Fatal(err)
-			}
-		}
-		wait <- struct{}{}
-	}()
-
-	<-wait
-	<-wait
-	<-wait
-	<-wait
-	//resp := make([]byte, 512)
-	//n, err := conn.Read(resp)
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
-	//t.Log(string(resp[:n]))
+			conn.Close()
+		}()
+	}
+	wg.Wait()
 }

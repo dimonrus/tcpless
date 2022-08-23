@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 )
 
 type pool struct {
@@ -16,36 +17,22 @@ type pool struct {
 	listener    *net.TCPListener
 }
 
-func (p *pool) grow() {
-	p.m.RLock()
-	if p.len() < p.config.Limits.MaxConnections {
-		p.m.RUnlock()
-		conn := p.accept()
-		if conn != nil {
-			p.m.Lock()
-			p.connections = append(p.connections, conn)
-			p.m.Unlock()
-		}
-	} else {
-		p.m.RUnlock()
-	}
-	return
-}
-
 func (p *pool) connection() *connection {
-	p.grow()
-	p.m.RLock()
-	defer p.m.RUnlock()
-	for p.connections[p.cursor].busy {
-		p.cursor++
-		if p.cursor > p.config.Limits.MaxConnections-1 {
-			p.cursor = 0
-		}
+	for p.len() >= p.config.Limits.MaxConnections {
+		time.Sleep(500 * time.Millisecond)
 	}
-	return p.connections[p.cursor]
+	conn := p.accept()
+	if conn != nil {
+		p.m.Lock()
+		p.connections = append(p.connections, conn)
+		p.m.Unlock()
+	}
+	return conn
 }
 
 func (p *pool) len() uint16 {
+	p.m.RLock()
+	defer p.m.RUnlock()
 	return uint16(len(p.connections))
 }
 
@@ -89,7 +76,6 @@ func (p *pool) process(c *connection) {
 		default:
 			n, err := c.Read(nameLen[:])
 			if err != nil {
-				p.logger.Warnln(err)
 				p.removeConnection(c)
 				return
 			} else {
@@ -99,14 +85,12 @@ func (p *pool) process(c *connection) {
 				name := make([]byte, nameLen[0])
 				n, err = c.Read(name)
 				if err != nil {
-					p.logger.Warnln(err)
 					p.removeConnection(c)
 					return
 				}
 				if callback, ok := registry[string(name)]; ok {
 					n, err = c.Read(dataLen[:])
 					if err != nil {
-						p.logger.Warnln(err)
 						p.removeConnection(c)
 						return
 					}
@@ -125,7 +109,6 @@ func (p *pool) process(c *connection) {
 func (p *pool) idle() {
 	for {
 		c := p.connection()
-		c.busy = true
 		go p.process(c)
 	}
 }
