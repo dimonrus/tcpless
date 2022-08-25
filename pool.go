@@ -2,8 +2,6 @@ package tcpless
 
 import (
 	"context"
-	"encoding/binary"
-	"io"
 	"net"
 	"sync"
 	"time"
@@ -13,7 +11,6 @@ type pool struct {
 	options
 	m           sync.RWMutex
 	connections []*connection
-	cursor      uint16
 	listener    *net.TCPListener
 }
 
@@ -52,54 +49,30 @@ func (p *pool) removeConnection(c *connection) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	_ = c.Close()
-	var connections = make([]*connection, len(p.connections)-1)
-	var j int
-	for i := range p.connections {
+	var i int
+	for i = range p.connections {
 		if p.connections[i] == c {
-			continue
+			break
 		}
-		connections[j] = p.connections[i]
-		j++
 	}
-	p.connections = connections
-	p.cursor = 0
+	p.connections = append(p.connections[:i], p.connections[i+1:]...)
 }
 
 func (p *pool) process(c *connection) {
-	var nameLen [1]byte
-	var dataLen [8]byte
 	for {
 		select {
 		case <-c.done:
 			p.removeConnection(c)
 			return
 		default:
-			n, err := c.Read(nameLen[:])
+			sig := GobSignature{stream: c}
+			err := sig.Decode(c.TCPConn)
 			if err != nil {
 				p.removeConnection(c)
 				return
 			} else {
-				if n == 0 {
-					continue
-				}
-				name := make([]byte, nameLen[0])
-				n, err = c.Read(name)
-				if err != nil {
-					p.removeConnection(c)
-					return
-				}
-				if callback, ok := registry[string(name)]; ok {
-					n, err = c.Read(dataLen[:])
-					if err != nil {
-						p.removeConnection(c)
-						return
-					}
-					sig := HandlerData{
-						route:         string(name),
-						contentLength: binary.BigEndian.Uint64(dataLen[:]),
-						stream:        io.ReadWriteCloser(c.TCPConn),
-					}
-					callback(context.Background(), sig)
+				if callback, ok := registry[sig.route]; ok {
+					callback(context.Background(), &sig)
 				}
 			}
 		}

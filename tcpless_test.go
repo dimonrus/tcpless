@@ -1,12 +1,13 @@
 package tcpless
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
 	"fmt"
 	"github.com/dimonrus/gocli"
 	"net"
 	"os"
-	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -33,16 +34,100 @@ var ticker = time.NewTicker(time.Second)
 //	}
 //}
 
+type TestUser struct {
+	Id        *int64
+	Name      *string
+	Some      string
+	Number    int
+	CreatedAt *time.Time
+}
+
+func getTestUser() TestUser {
+	u := TestUser{
+		Id:        new(int64),
+		Name:      new(string),
+		Some:      "olololo",
+		Number:    455555,
+		CreatedAt: new(time.Time),
+	}
+	*u.Id = 1444
+	*u.Name = "Boyarskij"
+	*u.CreatedAt = time.Now()
+	return u
+}
+
+type UserResp struct {
+	Id *int64
+}
+
+type Response struct {
+	Message *string
+	Data    any
+}
+
+func TestSig(t *testing.T) {
+	uu := &UserResp{
+		Id: new(int64),
+	}
+	resp := Response{
+		Message: new(string),
+		Data:    uu,
+	}
+	*uu.Id = 100
+	*resp.Message = "Some messafe"
+	sig := GobSignature{route: "some"}
+	sig.RegisterType(&UserResp{})
+	b := bytes.NewBuffer(nil)
+	err := gob.NewEncoder(b).Encode(resp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sig.data = b.Bytes()
+
+	b = bytes.NewBuffer(sig.Encode())
+	s := GobSignature{}
+	err = s.Decode(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	u := &UserResp{}
+	res := Response{
+		Data: u,
+	}
+	err = s.Parse(&res)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if *res.Data.(*UserResp).Id != *resp.Data.(*UserResp).Id {
+		t.Fatal("wrong encode decode id")
+	}
+	if *res.Message != *resp.Message {
+		t.Fatal("wrong encode decode message")
+	}
+}
+
 func Hello(ctx context.Context, sig Signature) {
-	data := make([]byte, sig.Len())
-	_, err := sig.Stream().Read(data)
+	entity := &TestUser{}
+	err := sig.Parse(entity)
 	if err != nil {
 		fmt.Println(err)
 	}
-	//rps++
-	//fmt.Println(n)
-	fmt.Println(string(data))
-	//sig.Stream().Write([]byte("done"))
+	sig.RegisterType(&UserResp{})
+
+	resp := Response{
+		Message: new(string),
+		Data: &UserResp{
+			Id: new(int64),
+		},
+	}
+	*resp.Message = "howdy"
+	*resp.Data.(*UserResp).Id = 100
+
+	_, err = sig.Send(resp)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 func TestServer(t *testing.T) {
@@ -53,7 +138,7 @@ func TestServer(t *testing.T) {
 			Port: 900,
 		},
 		Limits: ConnectionLimit{
-			MaxConnections: 5,
+			MaxConnections: 50,
 			MaxIdle:        time.Second * 10,
 		},
 	}
@@ -72,8 +157,8 @@ func TestClient(t *testing.T) {
 		Port: 900,
 	}
 
-	requests := 1_0
-	parallel := 6
+	requests := 1
+	parallel := 1
 
 	wg := sync.WaitGroup{}
 	wg.Add(parallel)
@@ -84,12 +169,22 @@ func TestClient(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			user := getTestUser()
+			sig := GobSignature{route: "Hello", stream: conn}
+			us := &UserResp{}
+			resp := Response{Data: us}
+			sig.RegisterType(us)
+			var response *GobSignature
 			for j := 0; j < requests; j++ {
-				message := CreateMessage("Hello", []byte("HelloWorld"+strconv.FormatInt(int64(j), 10)))
-				_, err = conn.Write(message)
+				response, err = sig.Send(user)
 				if err != nil {
 					t.Fatal(err)
 				}
+				err = response.Parse(&resp)
+				if err != nil {
+					t.Fatal(err)
+				}
+
 			}
 			conn.Close()
 		}()
