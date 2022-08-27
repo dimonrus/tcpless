@@ -15,10 +15,7 @@ type Server struct {
 // Start server tcp connections
 func (s *Server) Start() error {
 	var err error
-	s.pool.listener, err = net.ListenTCP(s.config.Network, &net.TCPAddr{
-		IP:   s.config.Address.IP,
-		Port: s.config.Address.Port,
-	})
+	s.pool.listener, err = net.Listen(s.config.Address.Network(), s.config.Address.String())
 	go s.pool.idle()
 	return err
 }
@@ -39,10 +36,15 @@ func NewServer(config Config, handler Handler, logger gocli.Logger) *Server {
 		config: config,
 		logger: logger,
 	}
+	buffers := make([][]byte, config.Limits.MaxConnections)
+	for i := uint16(0); i < config.Limits.MaxConnections; i++ {
+		buffers[i] = make([]byte, config.Limits.SharedBufferSize)
+	}
 	return &Server{
 		handler: handler,
 		options: opt,
 		pool: &pool{
+			buffers:     buffers,
 			options:     opt,
 			connections: make([]*connection, 0),
 		},

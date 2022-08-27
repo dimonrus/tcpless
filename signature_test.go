@@ -2,50 +2,74 @@ package tcpless
 
 import (
 	"bytes"
+	"net"
 	"testing"
 )
 
+var testBuffer = CreateBuffer(10, 100)
+
+func getTestConnection() (server Connection, client net.Conn) {
+	conn := &connection{done: make(chan struct{})}
+	conn.Conn, client = net.Pipe()
+	conn.buffer, conn.index = testBuffer.Pull()
+	return conn, client
+}
+
 func TestGobSignature_Encode(t *testing.T) {
-	sig := GobSignature{route: "Hello", data: []byte("HelloWorld")}
-	data := sig.Encode()
-	b := bytes.NewBuffer(data)
-	_ = sig.Decode(b)
-	if sig.Len() != 10 {
-		t.Fatal("wrong encode decode")
+	sig := GobSignature{route: []byte("Hello"), data: []byte("HelloWorld")}
+	buf, index := testBuffer.Pull()
+	defer testBuffer.Release(index)
+	for i := 0; i < 2000; i++ {
+		data := sig.Encode(buf)
+		reader := bytes.NewBuffer(data)
+		h, _ := sig.Decode(reader, buf)
+		if h.Len() != 10 || sig.Route() != "Hello" || string(sig.Data()) != "HelloWorld" {
+			t.Fatal("wrong encode decode")
+		}
 	}
 }
 
 func TestGobSignature_Decode(t *testing.T) {
 	data := []byte{5, 1, 10, 72, 101, 108, 108, 111, 72, 101, 108, 108, 111, 87, 111, 114, 108, 100}
-	buf := bytes.NewBuffer(data)
+	reader := bytes.NewBuffer(data)
+	buf, index := testBuffer.Pull()
+	defer testBuffer.Release(index)
 	sig := GobSignature{}
-	err := sig.Decode(buf)
+	h, err := sig.Decode(reader, buf)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sig.route != "Hello" {
+	if h.Route() != "Hello" {
 		t.Fatal("wrong decode route")
 	}
-	if string(sig.data) != "HelloWorld" {
+	if string(h.Data()) != "HelloWorld" {
 		t.Fatal("wrong decode data")
 	}
 }
 
 func BenchmarkGobSignature_Encode(b *testing.B) {
-	sig := GobSignature{route: "Hello", data: []byte("HelloWorld")}
+	sig := GobSignature{route: []byte("Hello"), data: []byte("HelloWorld")}
+	buf, index := testBuffer.Pull()
+	defer testBuffer.Release(index)
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = sig.Encode()
+		_ = sig.Encode(buf)
 	}
 	b.ReportAllocs()
 }
 
 func BenchmarkGobSignature_Decode(b *testing.B) {
 	data := []byte{5, 1, 10, 72, 101, 108, 108, 111, 72, 101, 108, 108, 111, 87, 111, 114, 108, 100}
-	buf := bytes.NewBuffer(data)
+	reader := bytes.NewBuffer(data)
 	sig := GobSignature{}
+	buf, _ := testBuffer.Pull()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = sig.Decode(buf)
+		reader.Write(data)
+		_, err := sig.Decode(reader, buf)
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 	b.ReportAllocs()
 }

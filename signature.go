@@ -3,37 +3,73 @@ package tcpless
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/gob"
 	"io"
 )
 
 // Signature common interface
 type Signature interface {
+	// Data useful message
+	Data() []byte
 	// Decode byte message
-	Decode(r io.Reader) error
+	Decode(r io.Reader, buf *bytes.Buffer) (Signature, error)
 	// Encode byte message
-	Encode() []byte
-	// Len Length of current message
+	Encode(buf *bytes.Buffer) []byte
+	// Len of data
 	Len() uint64
-	// Parse current message
-	Parse(v any) error
-	// RegisterType register custom type
-	RegisterType(v any)
-	// Send any message
-	Send(v any) (response *GobSignature, err error)
-	// Stream Get stream
-	Stream() io.ReadWriteCloser
+	// Route get message route
+	Route() string
 }
 
 // GobSignature standard handler signature
 type GobSignature struct {
-	route  string
-	data   []byte
-	stream io.ReadWriteCloser
+	// route
+	route []byte
+	// data
+	data []byte
+}
+
+// Data get useful message
+func (h GobSignature) Data() []byte {
+	return h.data
+}
+
+// Decode message from io
+// r - input with bytes
+// buf - bytes buffer
+func (h GobSignature) Decode(r io.Reader, buf *bytes.Buffer) (Signature, error) {
+	bts := buf.Bytes()
+	defer func() {
+		buf.Reset()
+		buf.Write(bts)
+	}()
+	// read route len and len of data len
+	l1l2 := buf.Next(2)
+	_, err := r.Read(l1l2)
+	if err != nil {
+		return h, err
+	}
+	// read data len and route
+	l := int(l1l2[0]) + int(l1l2[1])
+	l3Route := buf.Next(l)
+	_, err = r.Read(l3Route)
+	if err != nil {
+		return h, err
+	}
+	// collect data len
+	h.route = l3Route[l1l2[1]:]
+	l3 := buf.Next(8)
+	for i := byte(0); i < l1l2[1]; i++ {
+		l3[7-i] = l3Route[l1l2[1]-i-1]
+	}
+	ld := int(binary.BigEndian.Uint64(l3[:]))
+	// read data
+	h.data = buf.Next(ld)
+	_, err = r.Read(h.data)
+	return h, err
 }
 
 // Encode to byte message
-func (h *GobSignature) Encode() []byte {
+func (h GobSignature) Encode(buf *bytes.Buffer) []byte {
 	// route length
 	if len(h.route) > 255 {
 		return nil
@@ -66,74 +102,12 @@ func (h *GobSignature) Encode() []byte {
 	return result
 }
 
-// Decode message from io
-func (h *GobSignature) Decode(r io.Reader) error {
-	// read route len and len of data len
-	l1l2 := [2]byte{}
-	_, err := r.Read(l1l2[:])
-	if err != nil {
-		return err
-	}
-	// read data len and route
-	l := uint64(l1l2[0]) + uint64(l1l2[1])
-	l3Route := make([]byte, l)
-	_, err = r.Read(l3Route)
-	if err != nil {
-		return err
-	}
-	// collect data len
-	h.route = string(l3Route[l1l2[1]:])
-	l3 := [8]byte{}
-	for i := byte(0); i < l1l2[1]; i++ {
-		l3[7-i] = l3Route[l1l2[1]-i-1]
-	}
-	ld := binary.BigEndian.Uint64(l3[:])
-	// read data
-	h.data = make([]byte, ld)
-	_, err = r.Read(h.data)
-	return err
-}
-
 // Len Length of current message
-func (h *GobSignature) Len() uint64 {
+func (h GobSignature) Len() uint64 {
 	return uint64(len(h.data))
 }
 
-// Parse current message
-func (h *GobSignature) Parse(v any) error {
-	if h.Len() == 0 {
-		err := h.Decode(h.stream)
-		if err != nil {
-			return err
-		}
-	}
-	return gob.NewDecoder(bytes.NewBuffer(h.data)).Decode(v)
-}
-
-// RegisterType register custom type message
-func (h *GobSignature) RegisterType(v any) {
-	gob.Register(v)
-}
-
-// Send any message
-func (h *GobSignature) Send(v any) (response *GobSignature, err error) {
-	b := bytes.NewBuffer(nil)
-	err = gob.NewEncoder(b).Encode(v)
-	if err != nil {
-		return
-	}
-	h.data = b.Bytes()
-	_, err = h.stream.Write(h.Encode())
-	if err != nil {
-		return
-	}
-	response = &GobSignature{
-		stream: h.stream,
-	}
-	return
-}
-
-// Stream Get stream
-func (h *GobSignature) Stream() io.ReadWriteCloser {
-	return h.stream
+// Route get route
+func (h GobSignature) Route() string {
+	return string(h.route)
 }
