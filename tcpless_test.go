@@ -1,11 +1,8 @@
 package tcpless
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
 	"fmt"
-	"github.com/dimonrus/gocli"
 	"net"
 	"runtime"
 	"sync"
@@ -24,112 +21,32 @@ func MyHandler(handler Handler) Handler {
 		Reg("StatusMessage", StatusMessage)
 }
 
-var rps int32
-
-var ticker = time.NewTicker(time.Second)
-
-var idleRps bool
+var (
+	rps          int32
+	ticker       = time.NewTicker(time.Second)
+	m            runtime.MemStats
+	memoryReport = map[string]uint64{
+		"allocated":          0,
+		"total_allocated":    0,
+		"system":             0,
+		"garbage_collectors": 0}
+)
 
 func resetRps() {
 	for range ticker.C {
 		fmt.Println(atomic.LoadInt32(&rps))
 		atomic.StoreInt32(&rps, 0)
 
-		var m runtime.MemStats
 		runtime.ReadMemStats(&m)
-		report := make(map[string]string)
-		report["allocated"] = fmt.Sprintf("%v KB", m.Alloc/1024)
-		report["total_allocated"] = fmt.Sprintf("%v KB", m.TotalAlloc/1024)
-		report["system"] = fmt.Sprintf("%v KB", m.Sys/1024)
-		report["garbage_collectors"] = fmt.Sprintf("%v", m.NumGC)
-		fmt.Println(report)
-
-	}
-}
-
-type TestUser struct {
-	Id        *int64
-	Name      *string
-	Some      string
-	Number    int
-	CreatedAt *time.Time
-}
-
-func getTestUser() TestUser {
-	u := TestUser{
-		Id:        new(int64),
-		Name:      new(string),
-		Some:      "olololo",
-		Number:    455555,
-		CreatedAt: new(time.Time),
-	}
-	*u.Id = 1444
-	*u.Name = "Boyarskij"
-	*u.CreatedAt = time.Now()
-	return u
-}
-
-type UserResp struct {
-	Id *int64
-}
-
-type Response struct {
-	Message *string
-	Data    any
-}
-
-func TestSig(t *testing.T) {
-	uu := &UserResp{
-		Id: new(int64),
-	}
-	resp := Response{
-		Message: new(string),
-		Data:    uu,
-	}
-	*uu.Id = 100
-	*resp.Message = "Some messafe"
-	sig := GobSignature{route: []byte("some")}
-
-	client := GobClient{}
-	client.RegisterType(&UserResp{})
-
-	b := bytes.NewBuffer(nil)
-	err := gob.NewEncoder(b).Encode(resp)
-	if err != nil {
-		t.Fatal(err)
-	}
-	sig.data = b.Bytes()
-
-	buf, index := testBuffer.Pull()
-	defer testBuffer.Release(index)
-
-	reader := bytes.NewBuffer(sig.Encode(buf))
-	s := &GobSignature{}
-	err = s.Decode(reader, buf)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	u := &UserResp{}
-	res := Response{
-		Data: u,
-	}
-	err = client.Parse(s, &res)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if *res.Data.(*UserResp).Id != *resp.Data.(*UserResp).Id {
-		t.Fatal("wrong encode decode id")
-	}
-	if *res.Message != *resp.Message {
-		t.Fatal("wrong encode decode message")
+		memoryReport["allocated"] = m.Alloc
+		memoryReport["total_allocated"] = m.TotalAlloc
+		memoryReport["system"] = m.Sys
+		memoryReport["garbage_collectors"] = uint64(m.NumGC)
+		fmt.Println(memoryReport)
 	}
 }
 
 func Hello(ctx context.Context, client IClient, sig Signature) {
-	if !idleRps {
-		go resetRps()
-	}
 	atomic.AddInt32(&rps, 1)
 	entity := &TestUser{}
 	err := client.Parse(sig, entity)
@@ -165,14 +82,16 @@ func TestServer(t *testing.T) {
 			MaxIdle:          time.Second * 10,
 		},
 	}
-	server := NewServer(config, MyHandler(nil), NewGobClient, gocli.NewLogger(gocli.LoggerConfig{}))
-	err := server.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
+	_ = config
+	//server := NewServer(config, MyHandler(nil), NewGobClient, gocli.NewLogger(gocli.LoggerConfig{}))
+	//err := server.Start()
+	//if err != nil {
+	//	t.Fatal(err)
+	//}
+	go resetRps()
+	time.Sleep(time.Second * 20)
 	//c := make(chan os.Signal)
 	//<-c
-	time.Sleep(time.Second * 10)
 }
 
 func TestClient(t *testing.T) {
@@ -203,6 +122,7 @@ func TestClient(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
+
 				//err = response.Parse(&resp)
 				//if err != nil {
 				//	t.Fatal(err)

@@ -51,6 +51,5 @@ func (c *connection) Index() uint16 {
 
 // Release connection
 func (c *connection) Release() error {
-	c.done <- struct{}{}
 	return c.Conn.Close()
 }

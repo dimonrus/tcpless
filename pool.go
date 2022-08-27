@@ -70,12 +70,11 @@ func (p *pool) process(client IClient) {
 			p.removeConnection(client.Stream().Connection().(*connection))
 			return
 		default:
-			time.Sleep(time.Second)
 			err := client.Read(sig)
 			if err != nil {
 				p.logger.Errorln(err)
-				p.removeConnection(client.Stream().Connection().(*connection))
-				continue
+				p.removeConnection(client.Stream().(*connection))
+				return
 			} else {
 				if callback, ok := registry[sig.Route()]; ok {
 					callback(context.Background(), client, sig)
