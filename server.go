@@ -10,13 +10,14 @@ type Server struct {
 	options
 	pool    *pool
 	handler Handler
+	client  func() IClient
 }
 
 // Start server tcp connections
 func (s *Server) Start() error {
 	var err error
 	s.pool.listener, err = net.Listen(s.config.Address.Network(), s.config.Address.String())
-	go s.pool.idle()
+	go s.idle()
 	return err
 }
 
@@ -30,21 +31,28 @@ func (s *Server) Restart() {
 
 }
 
+// Idle listen connection
+func (s *Server) idle() {
+	for {
+		c := s.pool.connection()
+		client := s.client()
+		client.SetStream(c)
+		go s.pool.process(client)
+	}
+}
+
 // NewServer init new server
-func NewServer(config Config, handler Handler, logger gocli.Logger) *Server {
+func NewServer(config Config, handler Handler, client ClientConstructor, logger gocli.Logger) *Server {
 	opt := options{
 		config: config,
 		logger: logger,
 	}
-	buffers := make([][]byte, config.Limits.MaxConnections)
-	for i := uint16(0); i < config.Limits.MaxConnections; i++ {
-		buffers[i] = make([]byte, config.Limits.SharedBufferSize)
-	}
 	return &Server{
+		client:  client,
 		handler: handler,
 		options: opt,
 		pool: &pool{
-			buffers:     buffers,
+			buffer:      CreateBuffer(int(config.Limits.MaxConnections), int(config.Limits.SharedBufferSize)),
 			options:     opt,
 			connections: make([]*connection, 0),
 		},

@@ -9,6 +9,9 @@ import (
 // Check for IClient interface
 var _ = (IClient)(&GobClient{})
 
+// ClientConstructor func for specific client init
+type ClientConstructor func() IClient
+
 // IClient interface for communication
 type IClient interface {
 	// Close stream
@@ -19,10 +22,12 @@ type IClient interface {
 	Parse(signature Signature, v any) error
 	// RegisterType register custom type
 	RegisterType(v any)
+	// Signature new signature
+	Signature() Signature
 	// Send any message
 	Send(route string, v any) error
 	// Read get signature from stream
-	Read() Signature
+	Read(sig Signature) error
 	// SetStream set stream io
 	SetStream(stream Connection)
 	// Stream Get stream
@@ -49,7 +54,7 @@ func (c *Client) Dial(address net.Addr) error {
 	c.stream = &connection{
 		Conn:   conn,
 		done:   make(chan struct{}),
-		buffer: nil,
+		buffer: NewPermanentBuffer(make([]byte, 1024)),
 		index:  0,
 	}
 	return err
@@ -90,13 +95,13 @@ func (g *GobClient) RegisterType(v any) {
 }
 
 // Signature get from stream
-func (g *GobClient) Read() Signature {
-	sig := &GobSignature{}
-	err := sig.Decode(g.stream.Connection(), g.stream.Buffer())
-	if err != nil {
-		return nil
-	}
-	return sig
+func (g *GobClient) Read(sig Signature) error {
+	return sig.Decode(g.stream.Connection(), g.stream.Buffer())
+}
+
+// Signature new signature
+func (g *GobClient) Signature() Signature {
+	return &GobSignature{}
 }
 
 // Send data to stream
@@ -112,4 +117,9 @@ func (g *GobClient) Send(route string, v any) error {
 	}
 	_, err = g.stream.Connection().Write(s.Encode(g.stream.Buffer()))
 	return err
+}
+
+// NewGobClient gob client constructor
+func NewGobClient() IClient {
+	return &GobClient{}
 }

@@ -160,11 +160,12 @@ func TestServer(t *testing.T) {
 			Port: 900,
 		},
 		Limits: ConnectionLimit{
-			MaxConnections: 5,
-			MaxIdle:        time.Second * 10,
+			MaxConnections:   5,
+			SharedBufferSize: 1024,
+			MaxIdle:          time.Second * 10,
 		},
 	}
-	server := NewServer(config, MyHandler(nil), gocli.NewLogger(gocli.LoggerConfig{}))
+	server := NewServer(config, MyHandler(nil), NewGobClient, gocli.NewLogger(gocli.LoggerConfig{}))
 	err := server.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -180,15 +181,15 @@ func TestClient(t *testing.T) {
 		Port: 900,
 	}
 
-	requests := 1_000_000
-	parallel := 2
+	requests := 1
+	parallel := 1
 
 	wg := sync.WaitGroup{}
 	wg.Add(parallel)
 	for i := 0; i < parallel; i++ {
 		go func() {
 			defer wg.Done()
-			client := GobClient{}
+			client := NewGobClient()
 			err := client.Dial(address)
 			if err != nil {
 				t.Fatal(err)

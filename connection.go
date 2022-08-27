@@ -10,6 +10,8 @@ type Connection interface {
 	Buffer() *PermanentBuffer
 	// Connection get connection
 	Connection() net.Conn
+	// Exit chan for exit
+	Exit() <-chan struct{}
 	// Index get index
 	Index() uint16
 	// Release connection
@@ -37,6 +39,11 @@ func (c *connection) Connection() net.Conn {
 	return c.Conn
 }
 
+// Exit listen for exit
+func (c *connection) Exit() <-chan struct{} {
+	return c.done
+}
+
 // Index get index buffer
 func (c *connection) Index() uint16 {
 	return c.index
@@ -45,5 +52,5 @@ func (c *connection) Index() uint16 {
 // Release connection
 func (c *connection) Release() error {
 	c.done <- struct{}{}
-	return c.Connection().Close()
+	return c.Conn.Close()
 }
