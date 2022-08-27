@@ -104,8 +104,8 @@ func TestSig(t *testing.T) {
 	defer testBuffer.Release(index)
 
 	reader := bytes.NewBuffer(sig.Encode(buf))
-
-	s, err := GobSignature{}.Decode(reader, buf)
+	s := &GobSignature{}
+	err = s.Decode(reader, buf)
 	if err != nil {
 		t.Fatal(err)
 	}

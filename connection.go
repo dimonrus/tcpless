@@ -1,16 +1,13 @@
 package tcpless
 
 import (
-	"bytes"
 	"net"
 )
 
 // Connection interface
 type Connection interface {
 	// Buffer get buffer
-	Buffer() *bytes.Buffer
-	// CleanBuffer clean buffer
-	CleanBuffer() *bytes.Buffer
+	Buffer() *PermanentBuffer
 	// Connection get connection
 	Connection() net.Conn
 	// Index get index
@@ -25,19 +22,13 @@ type connection struct {
 	// is connection can be released
 	done chan struct{}
 	// all data should be stored here
-	buffer *bytes.Buffer
+	buffer *PermanentBuffer
 	// index of buffer
 	index uint16
 }
 
 // Buffer get buffer
-func (c *connection) Buffer() *bytes.Buffer {
-	return c.buffer
-}
-
-// CleanBuffer clean buffer
-func (c *connection) CleanBuffer() *bytes.Buffer {
-	c.buffer.Reset()
+func (c *connection) Buffer() *PermanentBuffer {
 	return c.buffer
 }
 

@@ -75,7 +75,7 @@ type GobClient struct {
 func (g *GobClient) Parse(signature Signature, v any) error {
 	var err error
 	if signature.Len() == 0 {
-		signature, err = signature.Decode(g.stream.Connection(), g.stream.Buffer())
+		err = signature.Decode(g.stream.Connection(), g.stream.Buffer())
 		if err != nil {
 			return err
 		}
@@ -91,7 +91,8 @@ func (g *GobClient) RegisterType(v any) {
 
 // Signature get from stream
 func (g *GobClient) Read() Signature {
-	sig, err := GobSignature{}.Decode(g.stream.Connection(), g.stream.Buffer())
+	sig := &GobSignature{}
+	err := sig.Decode(g.stream.Connection(), g.stream.Buffer())
 	if err != nil {
 		return nil
 	}

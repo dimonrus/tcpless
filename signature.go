@@ -1,7 +1,6 @@
 package tcpless
 
 import (
-	"bytes"
 	"encoding/binary"
 	"io"
 )
@@ -11,9 +10,9 @@ type Signature interface {
 	// Data useful message
 	Data() []byte
 	// Decode byte message
-	Decode(r io.Reader, buf *bytes.Buffer) (Signature, error)
+	Decode(r io.Reader, buf *PermanentBuffer) error
 	// Encode byte message
-	Encode(buf *bytes.Buffer) []byte
+	Encode(buf *PermanentBuffer) []byte
 	// Len of data
 	Len() uint64
 	// Route get message route
@@ -29,47 +28,44 @@ type GobSignature struct {
 }
 
 // Data get useful message
-func (h GobSignature) Data() []byte {
+func (h *GobSignature) Data() []byte {
 	return h.data
 }
 
 // Decode message from io
 // r - input with bytes
 // buf - bytes buffer
-func (h GobSignature) Decode(r io.Reader, buf *bytes.Buffer) (Signature, error) {
-	bts := buf.Bytes()
-	defer func() {
-		buf.Reset()
-		buf.Write(bts)
-	}()
+func (h *GobSignature) Decode(r io.Reader, buf *PermanentBuffer) error {
+	// reset buffer before nex usage
+	defer buf.Reset()
 	// read route len and len of data len
 	l1l2 := buf.Next(2)
 	_, err := r.Read(l1l2)
 	if err != nil {
-		return h, err
+		return err
 	}
 	// read data len and route
 	l := int(l1l2[0]) + int(l1l2[1])
 	l3Route := buf.Next(l)
 	_, err = r.Read(l3Route)
 	if err != nil {
-		return h, err
+		return err
 	}
 	// collect data len
 	h.route = l3Route[l1l2[1]:]
-	l3 := buf.Next(8)
+	l3 := [8]byte{}
 	for i := byte(0); i < l1l2[1]; i++ {
 		l3[7-i] = l3Route[l1l2[1]-i-1]
 	}
-	ld := int(binary.BigEndian.Uint64(l3[:]))
+	ld := binary.BigEndian.Uint64(l3[:])
 	// read data
-	h.data = buf.Next(ld)
+	h.data = buf.Next(int(ld))
 	_, err = r.Read(h.data)
-	return h, err
+	return err
 }
 
 // Encode to byte message
-func (h GobSignature) Encode(buf *bytes.Buffer) []byte {
+func (h *GobSignature) Encode(buf *PermanentBuffer) []byte {
 	// route length
 	if len(h.route) > 255 {
 		return nil
@@ -103,11 +99,11 @@ func (h GobSignature) Encode(buf *bytes.Buffer) []byte {
 }
 
 // Len Length of current message
-func (h GobSignature) Len() uint64 {
+func (h *GobSignature) Len() uint64 {
 	return uint64(len(h.data))
 }
 
 // Route get route
-func (h GobSignature) Route() string {
+func (h *GobSignature) Route() string {
 	return string(h.route)
 }

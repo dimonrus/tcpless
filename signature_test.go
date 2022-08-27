@@ -17,13 +17,17 @@ func getTestConnection() (server Connection, client net.Conn) {
 
 func TestGobSignature_Encode(t *testing.T) {
 	sig := GobSignature{route: []byte("Hello"), data: []byte("HelloWorld")}
+	res := GobSignature{}
 	buf, index := testBuffer.Pull()
 	defer testBuffer.Release(index)
-	for i := 0; i < 2000; i++ {
+	for i := 0; i < 2000000; i++ {
 		data := sig.Encode(buf)
 		reader := bytes.NewBuffer(data)
-		h, _ := sig.Decode(reader, buf)
-		if h.Len() != 10 || sig.Route() != "Hello" || string(sig.Data()) != "HelloWorld" {
+		err := res.Decode(reader, buf)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res.Len() != 10 || sig.Route() != "Hello" || string(sig.Data()) != "HelloWorld" {
 			t.Fatal("wrong encode decode")
 		}
 	}
@@ -31,19 +35,22 @@ func TestGobSignature_Encode(t *testing.T) {
 
 func TestGobSignature_Decode(t *testing.T) {
 	data := []byte{5, 1, 10, 72, 101, 108, 108, 111, 72, 101, 108, 108, 111, 87, 111, 114, 108, 100}
-	reader := bytes.NewBuffer(data)
+	reader := bytes.NewBuffer(nil)
 	buf, index := testBuffer.Pull()
 	defer testBuffer.Release(index)
 	sig := GobSignature{}
-	h, err := sig.Decode(reader, buf)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if h.Route() != "Hello" {
-		t.Fatal("wrong decode route")
-	}
-	if string(h.Data()) != "HelloWorld" {
-		t.Fatal("wrong decode data")
+	for i := 0; i < 1000; i++ {
+		reader.Write(data)
+		err := sig.Decode(reader, buf)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if sig.Route() != "Hello" {
+			t.Fatal("wrong decode route")
+		}
+		if string(sig.Data()) != "HelloWorld" {
+			t.Fatal("wrong decode data")
+		}
 	}
 }
 
@@ -66,7 +73,7 @@ func BenchmarkGobSignature_Decode(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		reader.Write(data)
-		_, err := sig.Decode(reader, buf)
+		err := sig.Decode(reader, buf)
 		if err != nil {
 			b.Fatal(err)
 		}
