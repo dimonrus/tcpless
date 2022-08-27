@@ -66,6 +66,7 @@ func (h *GobSignature) Decode(r io.Reader, buf *PermanentBuffer) error {
 
 // Encode to byte message
 func (h *GobSignature) Encode(buf *PermanentBuffer) []byte {
+	defer buf.Reset()
 	// route length
 	if len(h.route) > 255 {
 		return nil
@@ -83,7 +84,7 @@ func (h *GobSignature) Encode(buf *PermanentBuffer) []byte {
 		}
 	}
 	// make result slice
-	result := make([]byte, uint64(len(h.route))+2+uint64(l2)+ld)
+	result := buf.Next(len(h.route) + 2 + int(l2) + int(ld))
 	// copy len of route
 	result[0] = l1
 	// copy len for len of data

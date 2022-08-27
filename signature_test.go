@@ -56,8 +56,7 @@ func TestGobSignature_Decode(t *testing.T) {
 
 func BenchmarkGobSignature_Encode(b *testing.B) {
 	sig := GobSignature{route: []byte("Hello"), data: []byte("HelloWorld")}
-	buf, index := testBuffer.Pull()
-	defer testBuffer.Release(index)
+	buf, _ := testBuffer.Pull()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = sig.Encode(buf)
@@ -76,6 +75,9 @@ func BenchmarkGobSignature_Decode(b *testing.B) {
 		err := sig.Decode(reader, buf)
 		if err != nil {
 			b.Fatal(err)
+		}
+		if string(sig.Data()) != "HelloWorld" {
+			b.Fatal("wrong decode")
 		}
 	}
 	b.ReportAllocs()
