@@ -63,16 +63,15 @@ func (p *pool) removeConnection(c *connection) {
 }
 
 func (p *pool) process(client IClient) {
-	sig := client.Signature()
 	for {
 		select {
 		case <-client.Stream().Exit():
-			p.removeConnection(client.Stream().Connection().(*connection))
+			p.removeConnection(client.Stream().(*connection))
 			return
 		default:
-			err := client.Read(sig)
+			// read data into signature
+			sig, err := client.Read()
 			if err != nil {
-				p.logger.Errorln(err)
 				p.removeConnection(client.Stream().(*connection))
 				return
 			} else {
@@ -80,14 +79,6 @@ func (p *pool) process(client IClient) {
 					callback(context.Background(), client, sig)
 				}
 			}
-			//var m runtime.MemStats
-			//runtime.ReadMemStats(&m)
-			//report := make(map[string]string)
-			//report["allocated"] = fmt.Sprintf("%v KB", m.Alloc/1024)
-			//report["total_allocated"] = fmt.Sprintf("%v KB", m.TotalAlloc/1024)
-			//report["system"] = fmt.Sprintf("%v KB", m.Sys/1024)
-			//report["garbage_collectors"] = fmt.Sprintf("%v", m.NumGC)
-			//fmt.Println(report)
 		}
 	}
 }

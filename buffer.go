@@ -17,7 +17,7 @@ type PermanentBuffer struct {
 // Next get n bytes
 func (b *PermanentBuffer) Next(n int) []byte {
 	if n+b.off > cap(b.data) {
-		panic("n + offset > cap(data)")
+		panic("n + offset > cap(data); check your shared buffer size")
 		return nil
 	}
 	res := b.data[b.off : b.off+n]
@@ -59,6 +59,16 @@ func (b *PermanentBuffer) Cap() int {
 // Bytes return data
 func (b *PermanentBuffer) Bytes() []byte {
 	return b.data[b.off:]
+}
+
+// Read bytes
+func (b *PermanentBuffer) Read(p []byte) (n int, err error) {
+	if b.off >= b.Cap() {
+		return 0, io.EOF
+	}
+	n = copy(p, b.data[b.off:])
+	b.off += n
+	return n, nil
 }
 
 // Bytes return data

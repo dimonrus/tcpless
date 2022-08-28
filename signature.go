@@ -15,6 +15,8 @@ type Signature interface {
 	Encode(buf *PermanentBuffer) []byte
 	// Len of data
 	Len() uint64
+	// Read implements reader interface
+	Read(p []byte) (n int, err error)
 	// Route get message route
 	Route() string
 }
@@ -102,6 +104,12 @@ func (h *GobSignature) Encode(buf *PermanentBuffer) []byte {
 // Len Length of current message
 func (h *GobSignature) Len() uint64 {
 	return uint64(len(h.data))
+}
+
+// Read bytes
+func (h *GobSignature) Read(p []byte) (n int, err error) {
+	n = copy(p, h.data[:])
+	return
 }
 
 // Route get route

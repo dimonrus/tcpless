@@ -19,7 +19,7 @@ type IClient interface {
 	// Dial to server
 	Dial(address net.Addr) error
 	// Parse current message
-	Parse(signature Signature, v any) error
+	Parse(v any) error
 	// RegisterType register custom type
 	RegisterType(v any)
 	// Signature new signature
@@ -27,7 +27,7 @@ type IClient interface {
 	// Send any message
 	Send(route string, v any) error
 	// Read get signature from stream
-	Read(sig Signature) error
+	Read() (Signature, error)
 	// SetStream set stream io
 	SetStream(stream Connection)
 	// Stream Get stream
@@ -38,6 +38,8 @@ type IClient interface {
 type Client struct {
 	// connection
 	stream Connection
+	// signature
+	sig Signature
 }
 
 // Close stream
@@ -74,18 +76,19 @@ func (c *Client) Stream() Connection {
 // GobClient client for gob serialization
 type GobClient struct {
 	Client
+	decoder *gob.Decoder
 }
 
 // Parse data to type
-func (g *GobClient) Parse(signature Signature, v any) error {
+func (g *GobClient) Parse(v any) error {
 	var err error
-	if signature.Len() == 0 {
-		err = signature.Decode(g.stream.Connection(), g.stream.Buffer())
+	if g.sig.Len() == 0 {
+		err = g.sig.Decode(g.stream.Connection(), g.stream.Buffer())
 		if err != nil {
 			return err
 		}
 	}
-	return gob.NewDecoder(bytes.NewBuffer(signature.Data())).Decode(v)
+	return g.decoder.Decode(v)
 }
 
 // RegisterType register type for communication
@@ -95,8 +98,9 @@ func (g *GobClient) RegisterType(v any) {
 }
 
 // Signature get from stream
-func (g *GobClient) Read(sig Signature) error {
-	return sig.Decode(g.stream.Connection(), g.stream.Buffer())
+func (g *GobClient) Read() (Signature, error) {
+	err := g.sig.Decode(g.stream.Connection(), g.stream.Buffer())
+	return g.sig, err
 }
 
 // Signature new signature
@@ -106,6 +110,7 @@ func (g *GobClient) Signature() Signature {
 
 // Send data to stream
 func (g *GobClient) Send(route string, v any) error {
+	// TODO memory allocation
 	b := bytes.NewBuffer(nil)
 	err := gob.NewEncoder(b).Encode(v)
 	if err != nil {
@@ -121,5 +126,7 @@ func (g *GobClient) Send(route string, v any) error {
 
 // NewGobClient gob client constructor
 func NewGobClient() IClient {
-	return &GobClient{}
+	c := &GobClient{Client: Client{sig: &GobSignature{}}}
+	c.decoder = gob.NewDecoder(c.Client.sig)
+	return c
 }

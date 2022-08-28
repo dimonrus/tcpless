@@ -3,7 +3,9 @@ package tcpless
 import (
 	"context"
 	"fmt"
+	"github.com/dimonrus/gocli"
 	"net"
+	"os"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -32,24 +34,27 @@ var (
 		"garbage_collectors": 0}
 )
 
+func printMemStat() {
+	runtime.ReadMemStats(&m)
+	memoryReport["allocated"] = m.Alloc
+	memoryReport["total_allocated"] = m.TotalAlloc
+	memoryReport["system"] = m.Sys
+	memoryReport["garbage_collectors"] = uint64(m.NumGC)
+	fmt.Println(memoryReport)
+}
+
 func resetRps() {
 	for range ticker.C {
-		fmt.Println(atomic.LoadInt32(&rps))
+		fmt.Println("rps is: ", atomic.LoadInt32(&rps))
 		atomic.StoreInt32(&rps, 0)
-
-		runtime.ReadMemStats(&m)
-		memoryReport["allocated"] = m.Alloc
-		memoryReport["total_allocated"] = m.TotalAlloc
-		memoryReport["system"] = m.Sys
-		memoryReport["garbage_collectors"] = uint64(m.NumGC)
-		fmt.Println(memoryReport)
+		printMemStat()
 	}
 }
 
 func Hello(ctx context.Context, client IClient, sig Signature) {
 	atomic.AddInt32(&rps, 1)
-	entity := &TestUser{}
-	err := client.Parse(sig, entity)
+	entity := TestUser{}
+	err := client.Parse(&entity)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -82,16 +87,15 @@ func TestServer(t *testing.T) {
 			MaxIdle:          time.Second * 10,
 		},
 	}
-	_ = config
-	//server := NewServer(config, MyHandler(nil), NewGobClient, gocli.NewLogger(gocli.LoggerConfig{}))
-	//err := server.Start()
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
+	server := NewServer(config, MyHandler(nil), NewGobClient, gocli.NewLogger(gocli.LoggerConfig{}))
+	err := server.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
 	go resetRps()
-	time.Sleep(time.Second * 20)
-	//c := make(chan os.Signal)
-	//<-c
+	//time.Sleep(time.Second * 20)
+	c := make(chan os.Signal)
+	<-c
 }
 
 func TestClient(t *testing.T) {
@@ -100,8 +104,8 @@ func TestClient(t *testing.T) {
 		Port: 900,
 	}
 
-	requests := 1
-	parallel := 1
+	requests := 100
+	parallel := 2
 
 	wg := sync.WaitGroup{}
 	wg.Add(parallel)
@@ -118,6 +122,7 @@ func TestClient(t *testing.T) {
 			//sig.RegisterType(us)
 			//var response *GobSignature
 			for j := 0; j < requests; j++ {
+				time.Sleep(time.Millisecond * 333)
 				err = client.Send("Hello", getTestUser())
 				if err != nil {
 					t.Fatal(err)
