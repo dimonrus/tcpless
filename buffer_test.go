@@ -44,7 +44,6 @@ func TestBuffer_Next(t *testing.T) {
 	copy(d12[:], []byte{1, 2})
 	d35 := b.Next(3)
 	copy(d35[:], []byte{3, 4, 5})
-	b.Reset()
 	if b.Bytes()[0] != 1 {
 		t.Fatal("wrong 0 byte")
 	}
@@ -65,7 +64,6 @@ func TestBuffer_Next(t *testing.T) {
 	}
 	b.Reset()
 	b.Write([]byte{1, 2, 3, 4, 5, 6})
-	b.Reset()
 	if b.Bytes()[0] != 1 {
 		t.Fatal("wrong 0 byte")
 	}

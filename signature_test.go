@@ -10,11 +10,13 @@ var testBuffer = CreateBuffer(10, 1024)
 
 var HelloHelloWorldSignature = []byte{5, 1, 10, 72, 101, 108, 108, 111, 72, 101, 108, 108, 111, 87, 111, 114, 108, 100}
 
-func getTestConnection() (server Connection, client net.Conn) {
-	conn := &connection{done: make(chan struct{})}
-	conn.Conn, client = net.Pipe()
-	conn.buffer, conn.index = testBuffer.Pull()
-	return conn, client
+func getTestPipe() (server Connection, client Connection) {
+	srv := &connection{done: make(chan struct{})}
+	cl := &connection{done: make(chan struct{})}
+	srv.Conn, cl.Conn = net.Pipe()
+	srv.buffer, srv.index = testBuffer.Pull()
+	cl.buffer, cl.index = testBuffer.Pull()
+	return srv, cl
 }
 
 func TestGobSignature_Encode(t *testing.T) {
@@ -56,7 +58,12 @@ func TestGobSignature_Decode(t *testing.T) {
 	}
 }
 
-// BenchmarkGobSignature_Encode-8   	43384062	        24.72 ns/op	       0 B/op	       0 allocs/op
+// goos: darwin
+// goarch: amd64
+// pkg: github.com/dimonrus/tcpless
+// cpu: Intel(R) Core(TM) i5-8279U CPU @ 2.40GHz
+// BenchmarkGobSignature_Encode
+// BenchmarkGobSignature_Encode-8   	39920605	        29.55 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkGobSignature_Encode(b *testing.B) {
 	sig := GobSignature{route: []byte("Hello"), data: []byte("HelloWorld")}
 	buf, _ := testBuffer.Pull()
@@ -67,7 +74,12 @@ func BenchmarkGobSignature_Encode(b *testing.B) {
 	b.ReportAllocs()
 }
 
-// BenchmarkGobSignature_Decode-8   	30727471	        37.85 ns/op	       0 B/op	       0 allocs/op
+// goos: darwin
+// goarch: amd64
+// pkg: github.com/dimonrus/tcpless
+// cpu: Intel(R) Core(TM) i5-8279U CPU @ 2.40GHz
+// BenchmarkGobSignature_Decode
+// BenchmarkGobSignature_Decode-8   	44606445	        26.88 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkGobSignature_Decode(b *testing.B) {
 	reader := bytes.NewBuffer(nil)
 	sig := &GobSignature{}

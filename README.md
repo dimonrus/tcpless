@@ -1,6 +1,6 @@
 ## TCPLESS
 
-library for golang rpc tcp serving using gob encoder
+library for golang rpc tcp serving using gob encoder/decoder
 
 
 #### If you find this project useful or want to support the author, you can send tokens to any of these wallets

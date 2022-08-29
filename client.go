@@ -22,8 +22,6 @@ type IClient interface {
 	Parse(v any) error
 	// RegisterType register custom type
 	RegisterType(v any)
-	// Signature new signature
-	Signature() Signature
 	// Send any message
 	Send(route string, v any) error
 	// Read get signature from stream
@@ -53,19 +51,14 @@ func (c *Client) Dial(address net.Addr) error {
 	if err != nil {
 		return err
 	}
+	// TODO permanent buffer size
 	c.stream = &connection{
 		Conn:   conn,
 		done:   make(chan struct{}),
-		buffer: NewPermanentBuffer(make([]byte, 1024)),
+		buffer: bytes.NewBuffer(make([]byte, 0, 1024)),
 		index:  0,
 	}
 	return err
-}
-
-// SetStream set stream
-func (c *Client) SetStream(stream Connection) {
-	c.stream = stream
-	return
 }
 
 // Stream Get stream
@@ -75,8 +68,12 @@ func (c *Client) Stream() Connection {
 
 // GobClient client for gob serialization
 type GobClient struct {
+	// Common client
 	Client
+	// Gob decoder
 	decoder *gob.Decoder
+	// Gob encoder
+	encoder *gob.Encoder
 }
 
 // Parse data to type
@@ -103,22 +100,27 @@ func (g *GobClient) Read() (Signature, error) {
 	return g.sig, err
 }
 
-// Signature new signature
-func (g *GobClient) Signature() Signature {
-	return &GobSignature{}
+// SetStream set stream
+func (g *GobClient) SetStream(stream Connection) {
+	// set stream
+	g.stream = stream
+	// set encoder
+	g.encoder = gob.NewEncoder(stream.Buffer())
+	// set stream
+	g.decoder = gob.NewDecoder(stream.Buffer())
+	return
 }
 
 // Send data to stream
 func (g *GobClient) Send(route string, v any) error {
-	// TODO memory allocation
-	b := bytes.NewBuffer(nil)
-	err := gob.NewEncoder(b).Encode(v)
+	g.stream.Buffer().Reset()
+	err := g.encoder.Encode(v)
 	if err != nil {
 		return err
 	}
 	s := GobSignature{
 		route: []byte(route),
-		data:  b.Bytes(),
+		data:  g.stream.Buffer().Bytes(),
 	}
 	_, err = g.stream.Connection().Write(s.Encode(g.stream.Buffer()))
 	return err
@@ -126,7 +128,5 @@ func (g *GobClient) Send(route string, v any) error {
 
 // NewGobClient gob client constructor
 func NewGobClient() IClient {
-	c := &GobClient{Client: Client{sig: &GobSignature{}}}
-	c.decoder = gob.NewDecoder(c.Client.sig)
-	return c
+	return &GobClient{Client: Client{sig: &GobSignature{}}}
 }

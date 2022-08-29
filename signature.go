@@ -1,6 +1,7 @@
 package tcpless
 
 import (
+	"bytes"
 	"encoding/binary"
 	"io"
 )
@@ -10,15 +11,17 @@ type Signature interface {
 	// Data useful message
 	Data() []byte
 	// Decode byte message
-	Decode(r io.Reader, buf *PermanentBuffer) error
+	Decode(r io.Reader, buf *bytes.Buffer) error
 	// Encode byte message
-	Encode(buf *PermanentBuffer) []byte
+	Encode(buf *bytes.Buffer) []byte
 	// Len of data
 	Len() uint64
 	// Read implements reader interface
 	Read(p []byte) (n int, err error)
 	// Route get message route
 	Route() string
+	// Write implements writer interface
+	Write(p []byte) (n int, err error)
 }
 
 // GobSignature standard handler signature
@@ -37,22 +40,21 @@ func (h *GobSignature) Data() []byte {
 // Decode message from io
 // r - input with bytes
 // buf - bytes buffer
-func (h *GobSignature) Decode(r io.Reader, buf *PermanentBuffer) error {
-	// reset buffer before nex usage
+func (h *GobSignature) Decode(r io.Reader, buf *bytes.Buffer) error {
+	// reset buffer before next usage
 	defer buf.Reset()
-	// read route len and len of data len
-	l1l2 := buf.Next(2)
-	_, err := r.Read(l1l2)
+	// read all from reader
+	data := buf.Bytes()
+	n, err := r.Read(data[:buf.Cap()])
 	if err != nil {
 		return err
 	}
+	data = data[:n]
+	// read route len and len of data len
+	l1l2 := data[:2]
 	// read data len and route
 	l := int(l1l2[0]) + int(l1l2[1])
-	l3Route := buf.Next(l)
-	_, err = r.Read(l3Route)
-	if err != nil {
-		return err
-	}
+	l3Route := data[2 : 2+l]
 	// collect data len
 	h.route = l3Route[l1l2[1]:]
 	l3 := [8]byte{}
@@ -61,13 +63,13 @@ func (h *GobSignature) Decode(r io.Reader, buf *PermanentBuffer) error {
 	}
 	ld := binary.BigEndian.Uint64(l3[:])
 	// read data
-	h.data = buf.Next(int(ld))
-	_, err = r.Read(h.data)
-	return err
+	h.data = data[2+l : 2+l+(int(ld))]
+	return nil
 }
 
 // Encode to byte message
-func (h *GobSignature) Encode(buf *PermanentBuffer) []byte {
+func (h *GobSignature) Encode(buf *bytes.Buffer) []byte {
+	// reset buffer before next usage
 	defer buf.Reset()
 	// route length
 	if len(h.route) > 255 {
@@ -86,7 +88,7 @@ func (h *GobSignature) Encode(buf *PermanentBuffer) []byte {
 		}
 	}
 	// make result slice
-	result := buf.Next(len(h.route) + 2 + int(l2) + int(ld))
+	result := buf.Bytes()[:(len(h.route) + 2 + int(l2) + int(ld))]
 	// copy len of route
 	result[0] = l1
 	// copy len for len of data
@@ -97,7 +99,8 @@ func (h *GobSignature) Encode(buf *PermanentBuffer) []byte {
 	copy(result[2+l2:2+l2+l1], h.route)
 	// copy data
 	copy(result[2+l2+l1:], h.data)
-	// return result
+	// write to buffer
+	buf.Write(result)
 	return result
 }
 
@@ -106,7 +109,7 @@ func (h *GobSignature) Len() uint64 {
 	return uint64(len(h.data))
 }
 
-// Read bytes
+// Read all bytes
 func (h *GobSignature) Read(p []byte) (n int, err error) {
 	n = copy(p, h.data[:])
 	return
@@ -115,4 +118,10 @@ func (h *GobSignature) Read(p []byte) (n int, err error) {
 // Route get route
 func (h *GobSignature) Route() string {
 	return string(h.route)
+}
+
+// Write rewrite bytes
+func (h *GobSignature) Write(p []byte) (n int, err error) {
+	n = copy(h.data[:], p)
+	return
 }
