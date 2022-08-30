@@ -9,7 +9,7 @@ var registry = make(handlerRegistry)
 type handlerRegistry map[string]Handler
 
 // Handler Procedure handler
-type Handler func(ctx context.Context, client IClient, sig Signature)
+type Handler func(ctx context.Context, client IClient)
 
 // Reg register new route
 func (h Handler) Reg(route string, handler Handler) Handler {

@@ -13,19 +13,9 @@ import (
 	"time"
 )
 
-func StatusMessage(ctx context.Context, client IClient, sig Signature) {
-
-}
-
-func MyHandler(handler Handler) Handler {
-	return handler.
-		Reg("Hello", Hello).
-		Reg("StatusMessage", StatusMessage)
-}
-
 var (
 	rps          int32
-	ticker       = time.NewTicker(time.Second)
+	ticker       = time.NewTicker(time.Millisecond * 500)
 	m            runtime.MemStats
 	memoryReport = map[string]uint64{
 		"allocated":          0,
@@ -53,7 +43,7 @@ func resetRps() {
 
 var so = &sync.Once{}
 
-func Hello(ctx context.Context, client IClient, sig Signature) {
+func Hello(ctx context.Context, client IClient) {
 	atomic.AddInt32(&rps, 1)
 	entity := TestUser{}
 	err := client.Parse(&entity)
@@ -69,6 +59,11 @@ func Hello(ctx context.Context, client IClient, sig Signature) {
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+
+func MyHandler(handler Handler) Handler {
+	return handler.
+		Reg("Hello", Hello)
 }
 
 func TestServer(t *testing.T) {
@@ -135,7 +130,6 @@ func TestClient(t *testing.T) {
 				if *resp.Data.(*TestUserUserCreate).Id != 1235813 {
 					t.Fatal("wrong exchange")
 				}
-
 			}
 			_ = client.Close()
 		}()
