@@ -51,6 +51,8 @@ func resetRps() {
 	}
 }
 
+var so = &sync.Once{}
+
 func Hello(ctx context.Context, client IClient, sig Signature) {
 	atomic.AddInt32(&rps, 1)
 	entity := TestUser{}
@@ -58,21 +60,15 @@ func Hello(ctx context.Context, client IClient, sig Signature) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	//sig.RegisterType(&UserResp{})
+	so.Do(func() {
+		client.RegisterType(&TestUserUserCreate{})
+	})
 	//
-	//resp := Response{
-	//	Message: new(string),
-	//	Data: &UserResp{
-	//		Id: new(int64),
-	//	},
-	//}
-	//*resp.Message = "howdy"
-	//*resp.Data.(*UserResp).Id = 100
-	//
-	//_, err = sig.Send(resp)
-	//if err != nil {
-	//	fmt.Println(err)
-	//}
+	resp := getTestResponse()
+	err = client.Send("response", resp)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 func TestServer(t *testing.T) {
@@ -119,7 +115,12 @@ func TestClient(t *testing.T) {
 			}
 			//us := &UserResp{}
 			//resp := Response{Data: us}
-			//sig.RegisterType(us)
+
+			var resp = TestResponse{
+				Message: nil,
+				Data:    &TestUserUserCreate{},
+			}
+			client.RegisterType(&TestUserUserCreate{})
 			//var response *GobSignature
 			for j := 0; j < requests; j++ {
 				//time.Sleep(time.Millisecond * 333)
@@ -127,11 +128,13 @@ func TestClient(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-
-				//err = response.Parse(&resp)
-				//if err != nil {
-				//	t.Fatal(err)
-				//}
+				err = client.Parse(&resp)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if *resp.Data.(*TestUserUserCreate).Id != 1235813 {
+					t.Fatal("wrong exchange")
+				}
 
 			}
 			_ = client.Close()
