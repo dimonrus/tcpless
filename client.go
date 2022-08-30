@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
+	"github.com/dimonrus/gocli"
 	"net"
 )
 
@@ -11,24 +12,26 @@ import (
 var _ = (IClient)(&GobClient{})
 
 // ClientConstructor func for specific client init
-type ClientConstructor func() IClient
+type ClientConstructor func(logger gocli.Logger) IClient
 
 // IClient interface for communication
 type IClient interface {
+	// Ask any message
+	Ask(route string, v any) error
 	// Close stream
 	Close() error
 	// Ctx get context
 	Ctx() context.Context
 	// Dial to server
 	Dial(address net.Addr) error
+	// Logger get logger
+	Logger() gocli.Logger
 	// Parse current message
 	Parse(v any) error
-	// RegisterType register custom type
-	RegisterType(v any)
-	// Send any message
-	Send(route string, v any) error
 	// Read get signature from stream
 	Read() (Signature, error)
+	// RegisterType register custom type
+	RegisterType(v any)
 	// SetStream set stream io
 	SetStream(stream Connection)
 	// Stream Get stream
@@ -45,6 +48,8 @@ type Client struct {
 	sig Signature
 	// context
 	ctx context.Context
+	// client logger
+	logger gocli.Logger
 }
 
 // Close stream
@@ -55,6 +60,11 @@ func (c *Client) Close() error {
 // Ctx get context
 func (c *Client) Ctx() context.Context {
 	return c.ctx
+}
+
+// Logger get logger
+func (c *Client) Logger() gocli.Logger {
+	return c.logger
 }
 
 // Stream Get stream
@@ -78,19 +88,29 @@ type GobClient struct {
 	encoder *gob.Encoder
 }
 
+// Ask server
+func (g *GobClient) Ask(route string, v any) error {
+	g.stream.Buffer().Reset()
+	err := g.encoder.Encode(v)
+	if err != nil {
+		return err
+	}
+	s := GobSignature{
+		route: []byte(route),
+		data:  g.stream.Buffer().Bytes(),
+	}
+	g.stream.Buffer().Reset()
+	_, err = g.stream.Connection().Write(s.Encode(g.stream.Buffer()))
+	return err
+}
+
 // Dial to server
 func (g *GobClient) Dial(address net.Addr) error {
 	conn, err := net.Dial(address.Network(), address.String())
 	if err != nil {
 		return err
 	}
-	// TODO permanent buffer size
-	g.SetStream(&connection{
-		Conn:   conn,
-		done:   make(chan struct{}),
-		buffer: bytes.NewBuffer(make([]byte, 0, 1024)),
-		index:  0,
-	})
+	g.SetStream(newConnection(conn, bytes.NewBuffer(make([]byte, 0, MinimumSharedBufferSize)), 0))
 	return err
 }
 
@@ -138,26 +158,9 @@ func (g *GobClient) SetStream(stream Connection) {
 	g.decoder = gob.NewDecoder(stream.Buffer())
 	// set encoder
 	g.encoder = gob.NewEncoder(stream.Buffer())
-	return
-}
-
-// Send data to stream
-func (g *GobClient) Send(route string, v any) error {
-	g.stream.Buffer().Reset()
-	err := g.encoder.Encode(v)
-	if err != nil {
-		return err
-	}
-	s := GobSignature{
-		route: []byte(route),
-		data:  g.stream.Buffer().Bytes(),
-	}
-	g.stream.Buffer().Reset()
-	_, err = g.stream.Connection().Write(s.Encode(g.stream.Buffer()))
-	return err
 }
 
 // NewGobClient gob client constructor
-func NewGobClient() IClient {
-	return &GobClient{Client: Client{sig: &GobSignature{}}}
+func NewGobClient(logger gocli.Logger) IClient {
+	return &GobClient{Client: Client{sig: &GobSignature{}, logger: logger}}
 }

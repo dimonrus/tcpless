@@ -10,7 +10,7 @@ type Server struct {
 	options
 	pool    *pool
 	handler Handler
-	client  func() IClient
+	client  ClientConstructor
 }
 
 // Start server tcp connections
@@ -35,7 +35,7 @@ func (s *Server) Restart() {
 func (s *Server) idle() {
 	for {
 		c := s.pool.connection()
-		client := s.client()
+		client := s.client(s.logger)
 		client.SetStream(c)
 		go s.pool.process(client)
 	}

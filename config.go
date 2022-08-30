@@ -7,7 +7,10 @@ import (
 )
 
 const (
+	// DefaultSharedBufferSize - 4 MB
 	DefaultSharedBufferSize = 1024 * 1024 * 4 // 4 MB
+	// MinimumSharedBufferSize - 2 KB
+	MinimumSharedBufferSize = 1024 * 2 // 2 KB
 )
 
 // Common parts for configs

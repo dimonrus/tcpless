@@ -52,7 +52,7 @@ func TestClientMemory(t *testing.T) {
 	for i := 0; i < parallel; i++ {
 		go func() {
 			defer wg.Done()
-			client := NewGobClient()
+			client := NewGobClient(nil)
 			err := client.Dial(address)
 			if err != nil {
 				t.Fatal(err)
@@ -60,7 +60,7 @@ func TestClientMemory(t *testing.T) {
 			//var response *GobSignature
 			for j := 0; j < requests; j++ {
 				//time.Sleep(time.Millisecond * 333)
-				err = client.Send("memory", []byte("how about memory"))
+				err = client.Ask("memory", []byte("how about memory"))
 				if err != nil {
 					t.Fatal(err)
 				}

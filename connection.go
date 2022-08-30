@@ -54,3 +54,13 @@ func (c *connection) Index() uint16 {
 func (c *connection) Release() error {
 	return c.Conn.Close()
 }
+
+// New connection
+func newConnection(conn net.Conn, buf *bytes.Buffer, index uint16) *connection {
+	return &connection{
+		Conn:   conn,
+		done:   make(chan struct{}),
+		buffer: buf,
+		index:  index,
+	}
+}

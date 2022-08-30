@@ -61,7 +61,7 @@ func TestEncodeDecodeMultipleSend(t *testing.T) {
 	go func(cl IClient) {
 		for i := 0; i < 5; i++ {
 			user := getTestUser()
-			err := cl.Send("Hello", user)
+			err := cl.Ask("Hello", user)
 			if err != nil {
 				t.Fatal(err)
 			}

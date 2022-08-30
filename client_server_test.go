@@ -58,7 +58,7 @@ func Hello(client IClient) {
 		fmt.Println(err)
 	}
 	resp := TestOkResponse{Msg: "ok"}
-	err = client.Send("response", resp)
+	err = client.Ask("response", resp)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -98,22 +98,22 @@ func TestClient(t *testing.T) {
 		Port: 900,
 	}
 
-	requests := 10000000
-	parallel := 4
+	requests := 1000000
+	parallel := 2
 
 	wg := sync.WaitGroup{}
 	wg.Add(parallel)
 	for i := 0; i < parallel; i++ {
 		go func() {
 			defer wg.Done()
-			client := NewGobClient()
+			client := NewGobClient(nil)
 			err := client.Dial(address)
 			if err != nil {
 				t.Fatal(err)
 			}
 			resp := TestOkResponse{}
 			for j := 0; j < requests; j++ {
-				err = client.Send("Hello", getTestUser())
+				err = client.Ask("Hello", getTestUser())
 				if err != nil {
 					t.Fatal(err)
 				}
