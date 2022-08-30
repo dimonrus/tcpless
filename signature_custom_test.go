@@ -1,8 +1,6 @@
 package tcpless
 
 import (
-	"bytes"
-	"encoding/gob"
 	"testing"
 	"time"
 )
@@ -57,87 +55,48 @@ func getTestResponse() TestResponse {
 	return r
 }
 
-func getTestUserGobSignature() Signature {
-	sig := &GobSignature{route: []byte("user")}
-	buf, index := testBuffer.Pull()
-	defer testBuffer.Release(index)
-	user := getTestUser()
-	b := bytes.NewBuffer(nil)
-	err := gob.NewEncoder(b).Encode(user)
-	if err != nil {
-		panic(err)
-	}
-	sig.data = b.Bytes()
-	sig.Encode(buf)
-	return sig
-}
+func TestEncodeDecodeMultipleSend(t *testing.T) {
+	client, server := getTestClientServer()
 
-func TestEncodeDecode(t *testing.T) {
-	server, client := getTestPipe()
-
-	go func(cl Connection) {
-		gClient := NewGobClient()
-		gClient.SetStream(cl)
-		err := gClient.Send("user", getTestUser())
-		if err != nil {
-			t.Fatal(err)
+	go func(cl IClient) {
+		for i := 0; i < 5; i++ {
+			user := getTestUser()
+			err := cl.Send("Hello", user)
+			if err != nil {
+				t.Fatal(err)
+			}
 		}
 	}(client)
 
-	sClient := NewGobClient()
-	sClient.SetStream(server)
-	user := &TestUser{}
-	err := sClient.Parse(&user)
-	if err != nil {
-		t.Fatal(err)
+	for i := 0; i < 3; i++ {
+		user := &TestUser{}
+		err := server.Parse(user)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if user.Number != 455000 {
+			t.Fatal("wrong encode decode number")
+		}
+		if *user.Name != "ДобрыйДень" {
+			t.Fatal("wrong encode decode name")
+		}
 	}
 
-	//err = gClient.Parse(&res)
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
-	//if *res.Data.(*UserResp).Id != *resp.Data.(*UserResp).Id {
-	//	t.Fatal("wrong encode decode id")
-	//}
-	//if *res.Message != *resp.Message {
-	//	t.Fatal("wrong encode decode message")
-	//}
-}
-
-func BenchmarkClassicGobEncodeDecode(b *testing.B) {
-	user := getTestUser()
-
-	bt := make([]byte, 0, 1024)
-	buf := bytes.NewBuffer(bt)
-	e := gob.NewEncoder(buf)
-	d := gob.NewDecoder(buf)
-
-	bt1 := make([]byte, 0, 1024)
-	buf1 := bytes.NewBuffer(bt1)
-	e1 := gob.NewEncoder(buf1)
-	d1 := gob.NewDecoder(buf1)
-
-	sign := TestUser{}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		err := e.Encode(&user)
+	for i := 0; i < 2; i++ {
+		user := &TestUser{}
+		_, err := server.Read()
 		if err != nil {
-			b.Fatal(err)
+			t.Fatal(err)
 		}
-		err = d.Decode(&sign)
+		err = server.Parse(user)
 		if err != nil {
-			b.Fatal(err)
+			t.Fatal(err)
 		}
-
-		err = e1.Encode(&user)
-		if err != nil {
-			b.Fatal(err)
+		if user.Number != 455000 {
+			t.Fatal("wrong encode decode number")
 		}
-		err = d1.Decode(&sign)
-		if err != nil {
-			b.Fatal(err)
+		if *user.Name != "ДобрыйДень" {
+			t.Fatal("wrong encode decode name")
 		}
-		buf1.Reset()
 	}
-	b.ReportAllocs()
 }

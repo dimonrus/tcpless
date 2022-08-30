@@ -104,8 +104,8 @@ func TestClient(t *testing.T) {
 		Port: 900,
 	}
 
-	requests := 100
-	parallel := 2
+	requests := 600
+	parallel := 1
 
 	wg := sync.WaitGroup{}
 	wg.Add(parallel)
@@ -122,7 +122,7 @@ func TestClient(t *testing.T) {
 			//sig.RegisterType(us)
 			//var response *GobSignature
 			for j := 0; j < requests; j++ {
-				time.Sleep(time.Millisecond * 333)
+				//time.Sleep(time.Millisecond * 333)
 				err = client.Send("Hello", getTestUser())
 				if err != nil {
 					t.Fatal(err)

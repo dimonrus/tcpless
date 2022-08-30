@@ -77,6 +77,8 @@ func (p *pool) process(client IClient) {
 			} else {
 				if callback, ok := registry[sig.Route()]; ok {
 					callback(context.Background(), client, sig)
+					// clear buffer after, reuse memory
+					client.Stream().Buffer().Reset()
 				}
 			}
 		}

@@ -18,6 +18,8 @@ type Signature interface {
 	Len() uint64
 	// Read implements reader interface
 	Read(p []byte) (n int, err error)
+	// Reset signature
+	Reset()
 	// Route get message route
 	Route() string
 	// Write implements writer interface
@@ -42,7 +44,7 @@ func (h *GobSignature) Data() []byte {
 // buf - bytes buffer
 func (h *GobSignature) Decode(r io.Reader, buf *bytes.Buffer) error {
 	// reset buffer before next usage
-	defer buf.Reset()
+	// defer buf.Reset()
 	// read all from reader
 	data := buf.Bytes()
 	n, err := r.Read(data[:buf.Cap()])
@@ -64,13 +66,15 @@ func (h *GobSignature) Decode(r io.Reader, buf *bytes.Buffer) error {
 	ld := binary.BigEndian.Uint64(l3[:])
 	// read data
 	h.data = data[2+l : 2+l+(int(ld))]
+	// write data to buf
+	buf.Write(data)
 	return nil
 }
 
 // Encode to byte message
 func (h *GobSignature) Encode(buf *bytes.Buffer) []byte {
 	// reset buffer before next usage
-	defer buf.Reset()
+	buf.Reset()
 	// route length
 	if len(h.route) > 255 {
 		return nil
@@ -89,6 +93,8 @@ func (h *GobSignature) Encode(buf *bytes.Buffer) []byte {
 	}
 	// make result slice
 	result := buf.Bytes()[:(len(h.route) + 2 + int(l2) + int(ld))]
+	// copy data. Do it before route name will be saved
+	copy(result[2+l2+l1:], h.data)
 	// copy len of route
 	result[0] = l1
 	// copy len for len of data
@@ -97,11 +103,9 @@ func (h *GobSignature) Encode(buf *bytes.Buffer) []byte {
 	copy(result[2:2+l2], l3[8-l2:])
 	// copy route name
 	copy(result[2+l2:2+l2+l1], h.route)
-	// copy data
-	copy(result[2+l2+l1:], h.data)
 	// write to buffer
 	buf.Write(result)
-	return result
+	return buf.Bytes()
 }
 
 // Len Length of current message
@@ -112,6 +116,13 @@ func (h *GobSignature) Len() uint64 {
 // Read all bytes
 func (h *GobSignature) Read(p []byte) (n int, err error) {
 	n = copy(p, h.data[:])
+	return
+}
+
+// Reset signature
+func (h *GobSignature) Reset() {
+	h.route = nil
+	h.data = nil
 	return
 }
 
