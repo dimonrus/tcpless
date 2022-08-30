@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/dimonrus/gocli"
 	"net"
-	"os"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -44,7 +43,7 @@ func resetRps() {
 	for range ticker.C {
 		fmt.Println("rps is: ", atomic.LoadInt32(&rps))
 		atomic.StoreInt32(&rps, 0)
-		//printMemStat()
+		printMemStat()
 	}
 }
 
@@ -87,9 +86,9 @@ func TestServer(t *testing.T) {
 		t.Fatal(err)
 	}
 	go resetRps()
-	//time.Sleep(time.Second * 20)
-	c := make(chan os.Signal)
-	<-c
+	time.Sleep(time.Second * 20)
+	//c := make(chan os.Signal)
+	//<-c
 }
 
 func TestClient(t *testing.T) {
@@ -120,6 +119,9 @@ func TestClient(t *testing.T) {
 				err = client.Parse(&resp)
 				if err != nil {
 					t.Fatal(err)
+				}
+				if resp.Msg != "ok" {
+					t.Fatal("wrong response")
 				}
 			}
 			_ = client.Close()

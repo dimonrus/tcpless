@@ -80,6 +80,7 @@ func (p *pool) process(client IClient) {
 					callback(client)
 					// clear buffer after, reuse memory
 					client.Stream().Buffer().Reset()
+					sig.Reset()
 				}
 			}
 		}

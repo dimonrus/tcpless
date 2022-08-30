@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
+	"unsafe"
 )
 
 // Signature common interface
@@ -126,7 +127,7 @@ func (h *GobSignature) Reset() {
 
 // Route get route
 func (h *GobSignature) Route() string {
-	return string(h.route)
+	return *(*string)(unsafe.Pointer(&h.route))
 }
 
 // Write rewrite bytes

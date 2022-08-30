@@ -11,7 +11,7 @@ import (
 
 func MemoryCheck(client IClient) {
 	atomic.AddInt32(&rps, 1)
-	client.Stream().Buffer().Reset()
+	client.Read()
 }
 
 func MemoryHandler(handler Handler) Handler {
@@ -46,7 +46,7 @@ func TestClientMemory(t *testing.T) {
 		Port: 900,
 	}
 	requests := 1000000
-	parallel := 5
+	parallel := 3
 	wg := sync.WaitGroup{}
 	wg.Add(parallel)
 	for i := 0; i < parallel; i++ {
