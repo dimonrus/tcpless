@@ -1,7 +1,6 @@
 package tcpless
 
 import (
-	"context"
 	"fmt"
 	"github.com/dimonrus/gocli"
 	"net"
@@ -15,7 +14,7 @@ import (
 
 var (
 	rps          int32
-	ticker       = time.NewTicker(time.Millisecond * 500)
+	ticker       = time.NewTicker(time.Millisecond * 1000)
 	m            runtime.MemStats
 	memoryReport = map[string]uint64{
 		"allocated":          0,
@@ -23,6 +22,14 @@ var (
 		"system":             0,
 		"garbage_collectors": 0}
 )
+
+type TestOkResponse struct {
+	Msg string
+}
+
+func getTestOkResponse() TestOkResponse {
+	return TestOkResponse{Msg: "ok"}
+}
 
 func printMemStat() {
 	runtime.ReadMemStats(&m)
@@ -37,24 +44,20 @@ func resetRps() {
 	for range ticker.C {
 		fmt.Println("rps is: ", atomic.LoadInt32(&rps))
 		atomic.StoreInt32(&rps, 0)
-		printMemStat()
+		//printMemStat()
 	}
 }
 
 var so = &sync.Once{}
 
-func Hello(ctx context.Context, client IClient) {
+func Hello(client IClient) {
 	atomic.AddInt32(&rps, 1)
 	entity := TestUser{}
 	err := client.Parse(&entity)
 	if err != nil {
 		fmt.Println(err)
 	}
-	so.Do(func() {
-		client.RegisterType(&TestUserUserCreate{})
-	})
-	//
-	resp := getTestResponse()
+	resp := TestOkResponse{Msg: "ok"}
 	err = client.Send("response", resp)
 	if err != nil {
 		fmt.Println(err)
@@ -95,7 +98,7 @@ func TestClient(t *testing.T) {
 		Port: 900,
 	}
 
-	requests := 1000000
+	requests := 10000000
 	parallel := 4
 
 	wg := sync.WaitGroup{}
@@ -108,17 +111,8 @@ func TestClient(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			//us := &UserResp{}
-			//resp := Response{Data: us}
-
-			var resp = TestResponse{
-				Message: nil,
-				Data:    &TestUserUserCreate{},
-			}
-			client.RegisterType(&TestUserUserCreate{})
-			//var response *GobSignature
+			resp := TestOkResponse{}
 			for j := 0; j < requests; j++ {
-				//time.Sleep(time.Millisecond * 333)
 				err = client.Send("Hello", getTestUser())
 				if err != nil {
 					t.Fatal(err)
@@ -126,9 +120,6 @@ func TestClient(t *testing.T) {
 				err = client.Parse(&resp)
 				if err != nil {
 					t.Fatal(err)
-				}
-				if *resp.Data.(*TestUserUserCreate).Id != 1235813 {
-					t.Fatal("wrong exchange")
 				}
 			}
 			_ = client.Close()

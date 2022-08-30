@@ -1,7 +1,5 @@
 package tcpless
 
-import "context"
-
 // Callback registry
 var registry = make(handlerRegistry)
 
@@ -9,7 +7,7 @@ var registry = make(handlerRegistry)
 type handlerRegistry map[string]Handler
 
 // Handler Procedure handler
-type Handler func(ctx context.Context, client IClient)
+type Handler func(client IClient)
 
 // Reg register new route
 func (h Handler) Reg(route string, handler Handler) Handler {

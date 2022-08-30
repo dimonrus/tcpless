@@ -2,6 +2,7 @@ package tcpless
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 	"net"
 )
@@ -16,6 +17,8 @@ type ClientConstructor func() IClient
 type IClient interface {
 	// Close stream
 	Close() error
+	// Ctx get context
+	Ctx() context.Context
 	// Dial to server
 	Dial(address net.Addr) error
 	// Parse current message
@@ -30,6 +33,8 @@ type IClient interface {
 	SetStream(stream Connection)
 	// Stream Get stream
 	Stream() Connection
+	// WithContext With context
+	WithContext(ctx context.Context)
 }
 
 // Client structure
@@ -38,6 +43,8 @@ type Client struct {
 	stream Connection
 	// signature
 	sig Signature
+	// context
+	ctx context.Context
 }
 
 // Close stream
@@ -45,9 +52,20 @@ func (c *Client) Close() error {
 	return c.stream.Release()
 }
 
+// Ctx get context
+func (c *Client) Ctx() context.Context {
+	return c.ctx
+}
+
 // Stream Get stream
 func (c *Client) Stream() Connection {
 	return c.stream
+}
+
+// WithContext with context
+func (c *Client) WithContext(ctx context.Context) {
+	c.ctx = ctx
+	return
 }
 
 // GobClient client for gob serialization

@@ -1,7 +1,6 @@
 package tcpless
 
 import (
-	"context"
 	"github.com/dimonrus/gocli"
 	"net"
 	"sync"
@@ -10,7 +9,7 @@ import (
 	"time"
 )
 
-func MemoryCheck(ctx context.Context, client IClient) {
+func MemoryCheck(client IClient) {
 	atomic.AddInt32(&rps, 1)
 	client.Stream().Buffer().Reset()
 }
