@@ -104,8 +104,8 @@ func TestClient(t *testing.T) {
 		Port: 900,
 	}
 
-	requests := 600
-	parallel := 1
+	requests := 1000000
+	parallel := 4
 
 	wg := sync.WaitGroup{}
 	wg.Add(parallel)

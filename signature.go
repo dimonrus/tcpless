@@ -43,31 +43,32 @@ func (h *GobSignature) Data() []byte {
 // r - input with bytes
 // buf - bytes buffer
 func (h *GobSignature) Decode(r io.Reader, buf *bytes.Buffer) error {
-	// reset buffer before next usage
-	// defer buf.Reset()
-	// read all from reader
+	// store data
 	data := buf.Bytes()
-	n, err := r.Read(data[:buf.Cap()])
+	// read first 4 bytes
+	_, err := r.Read(data[:4])
 	if err != nil {
 		return err
 	}
-	data = data[:n]
-	// read route len and len of data len
-	l1l2 := data[:2]
-	// read data len and route
-	l := int(l1l2[0]) + int(l1l2[1])
-	l3Route := data[2 : 2+l]
-	// collect data len
-	h.route = l3Route[l1l2[1]:]
-	l3 := [8]byte{}
-	for i := byte(0); i < l1l2[1]; i++ {
-		l3[7-i] = l3Route[l1l2[1]-i-1]
+	// header length
+	l := data[:4]
+	// len of route
+	l1 := l[0]
+	// set l[0] to zero
+	l[0] = 0
+	// get len of data
+	l2 := binary.BigEndian.Uint32(l[:])
+	// must read content
+	n := int(l1) + int(l2)
+	// read content
+	n, err = r.Read(data[:n])
+	if err != nil {
+		return err
 	}
-	ld := binary.BigEndian.Uint64(l3[:])
 	// read data
-	h.data = data[2+l : 2+l+(int(ld))]
-	// write data to buf
-	buf.Write(data)
+	h.data = data[l1:n]
+	// set route
+	h.route = data[:l1]
 	return nil
 }
 
@@ -79,30 +80,27 @@ func (h *GobSignature) Encode(buf *bytes.Buffer) []byte {
 	if len(h.route) > 255 {
 		return nil
 	}
-	var l1 = byte(len(h.route))
-	// len of byte for data len
-	var l2 byte
-	// data length
-	l3 := [8]byte{}
-	ld := uint64(len(h.data))
-	for i := 7; i >= 0; i-- {
+	// header of encoded package
+	// l[0] - len of route
+	// l[1:] - len of data
+	l := [4]byte{}
+	// len of route
+	l[0] = byte(len(h.route))
+	// create len of data slice
+	ld := uint32(len(h.data))
+	for i := 3; i >= 0; i-- {
 		if ld>>(i*8) > 0 {
-			l2++
-			l3[7-i] = byte(ld >> (i * 8))
+			l[3-i] = byte(ld >> (i * 8))
 		}
 	}
 	// make result slice
-	result := buf.Bytes()[:(len(h.route) + 2 + int(l2) + int(ld))]
+	result := buf.Bytes()[:(len(h.route) + 4 + int(ld))]
 	// copy data. Do it before route name will be saved
-	copy(result[2+l2+l1:], h.data)
-	// copy len of route
-	result[0] = l1
-	// copy len for len of data
-	result[1] = l2
-	// copy len of data
-	copy(result[2:2+l2], l3[8-l2:])
+	copy(result[4+int(l[0]):], h.data)
 	// copy route name
-	copy(result[2+l2:2+l2+l1], h.route)
+	copy(result[4:4+int(l[0])], h.route)
+	// copy header
+	copy(result[:4], l[:])
 	// write to buffer
 	buf.Write(result)
 	return buf.Bytes()

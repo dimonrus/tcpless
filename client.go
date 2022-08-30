@@ -135,8 +135,7 @@ func (g *GobClient) Send(route string, v any) error {
 		data:  g.stream.Buffer().Bytes(),
 	}
 	g.stream.Buffer().Reset()
-	data := s.Encode(g.stream.Buffer())
-	_, err = g.stream.Connection().Write(data)
+	_, err = g.stream.Connection().Write(s.Encode(g.stream.Buffer()))
 	return err
 }
 
