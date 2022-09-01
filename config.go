@@ -16,7 +16,7 @@ const (
 // Common parts for configs
 type options struct {
 	// Config
-	config Config
+	config *Config
 	// Logger
 	logger gocli.Logger
 }
@@ -27,6 +27,8 @@ type Config struct {
 	Address net.Addr
 	// connection limits
 	Limits ConnectionLimit
+	// TLS configuration
+	TLS TLSConfig
 }
 
 // ConnectionLimit limits for connection

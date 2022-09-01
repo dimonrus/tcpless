@@ -1,7 +1,7 @@
 package tcpless
 
 import (
-	"net"
+	"github.com/dimonrus/gocli"
 	"sync"
 )
 
@@ -16,6 +16,8 @@ type concurrentClient struct {
 	concurrent int
 	// buffer pool
 	buffer *buffer
+	// options
+	options options
 }
 
 // Close all connection and release buffer
@@ -49,15 +51,15 @@ func (c *concurrentClient) initBuffers(bufferSize int) {
 }
 
 // dial to server
-func (c *concurrentClient) dialClients(address net.Addr, client func() IClient) error {
+func (c *concurrentClient) dialClients(client ClientConstructor, config *Config, logger gocli.Logger) error {
 	c.clients = make([]IClient, c.concurrent)
 	for i := 0; i < c.concurrent; i++ {
 		buf, index := c.buffer.Pull()
-		c.clients[i] = client()
-		err := c.clients[i].Dial(address)
+		c.clients[i] = client(config, logger)
+		_, err := c.clients[i].Dial()
 		if err != nil {
-			if c.clients[i].Logger() != nil {
-				c.clients[i].Logger().Errorln(err)
+			if logger != nil {
+				logger.Errorln(err)
 			}
 			return err
 		}
@@ -68,13 +70,13 @@ func (c *concurrentClient) dialClients(address net.Addr, client func() IClient) 
 
 // ConcurrentClient create concurrent client with n, n <= 0 ignores
 // bufferSize - shared buffer size
-func ConcurrentClient(address net.Addr, n int, bufferSize int, client func() IClient) *concurrentClient {
+func ConcurrentClient(n int, bufferSize int, client ClientConstructor, config *Config, logger gocli.Logger) *concurrentClient {
 	c := &concurrentClient{}
 	// set n
 	c.concurrentCount(n)
 	// init buffers
 	c.initBuffers(bufferSize)
 	// construct clients
-	_ = c.dialClients(address, client)
+	_ = c.dialClients(client, config, logger)
 	return c
 }

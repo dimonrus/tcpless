@@ -59,7 +59,7 @@ func TestEncodeDecodeMultipleSend(t *testing.T) {
 	client, server := getTestClientServer()
 
 	go func(cl IClient) {
-		for i := 0; i < 5; i++ {
+		for i := 0; i < 5000; i++ {
 			user := getTestUser()
 			err := cl.Ask("Hello", user)
 			if err != nil {
@@ -68,7 +68,7 @@ func TestEncodeDecodeMultipleSend(t *testing.T) {
 		}
 	}(client)
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 3000; i++ {
 		user := &TestUser{}
 		err := server.Parse(user)
 		if err != nil {
@@ -82,7 +82,7 @@ func TestEncodeDecodeMultipleSend(t *testing.T) {
 		}
 	}
 
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 2000; i++ {
 		user := &TestUser{}
 		_, err := server.Read()
 		if err != nil {

@@ -21,11 +21,12 @@ func getTestPipe() (server Connection, client Connection) {
 
 func getTestClientServer() (client IClient, server IClient) {
 	srv, cl := getTestPipe()
+	config := getTestConfig()
 
-	client = NewGobClient(nil)
+	client = NewGobClient(config, nil)
 	client.SetStream(cl)
 
-	server = NewGobClient(nil)
+	server = NewGobClient(config, nil)
 	server.SetStream(srv)
 
 	return

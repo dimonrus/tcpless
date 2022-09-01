@@ -12,7 +12,8 @@ import (
 // BenchmarkGobClient_Read-8   	  602586	      1888 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkGobClient_Read(b *testing.B) {
 	server, client := getTestPipe()
-	c := NewGobClient(nil)
+	config := getTestConfig()
+	c := NewGobClient(config, nil)
 	c.SetStream(server)
 	go func() {
 		for i := 0; i < b.N; i++ {
@@ -30,7 +31,6 @@ func BenchmarkGobClient_Read(b *testing.B) {
 }
 
 func BenchmarkGobClient_Parse(b *testing.B) {
-	b.Log("hello")
 	client, server := getTestClientServer()
 
 	user := getTestUser()
@@ -43,9 +43,9 @@ func BenchmarkGobClient_Parse(b *testing.B) {
 		}
 	}(client)
 
-	userModel := &TestUser{}
 	for i := 0; i < b.N; i++ {
-		err := server.Parse(userModel)
+		userModel := TestUser{}
+		err := server.Parse(&userModel)
 		if err != nil {
 			b.Fatal(err)
 		}

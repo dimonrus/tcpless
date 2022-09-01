@@ -1,18 +1,18 @@
 package tcpless
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
+	"crypto/tls"
+	"errors"
 	"github.com/dimonrus/gocli"
 	"net"
 )
 
 // Check for IClient interface
-var _ = (IClient)(&GobClient{})
+var _ = (IClient)(&Client{})
 
 // ClientConstructor func for specific client init
-type ClientConstructor func(logger gocli.Logger) IClient
+type ClientConstructor func(config *Config, logger gocli.Logger) IClient
 
 // IClient interface for communication
 type IClient interface {
@@ -23,7 +23,7 @@ type IClient interface {
 	// Ctx get context
 	Ctx() context.Context
 	// Dial to server
-	Dial(address net.Addr) error
+	Dial() (net.Conn, error)
 	// Logger get logger
 	Logger() gocli.Logger
 	// Parse current message
@@ -48,8 +48,26 @@ type Client struct {
 	sig Signature
 	// context
 	ctx context.Context
-	// client logger
-	logger gocli.Logger
+	// options
+	options options
+}
+
+// Ask any message
+func (c *Client) Ask(route string, v any) error {
+	// Nothing to implements
+	return errors.New("no action in base Client")
+}
+
+// Dial to server
+func (c *Client) Dial() (net.Conn, error) {
+	if c.options.config.TLS.Enabled {
+		config, err := c.options.config.TLS.LoadTLSConfig()
+		if err != nil {
+			return nil, err
+		}
+		return tls.Dial(c.options.config.Address.Network(), c.options.config.Address.String(), config)
+	}
+	return net.Dial(c.options.config.Address.Network(), c.options.config.Address.String())
 }
 
 // Close stream
@@ -64,7 +82,30 @@ func (c *Client) Ctx() context.Context {
 
 // Logger get logger
 func (c *Client) Logger() gocli.Logger {
-	return c.logger
+	return c.options.logger
+}
+
+// Parse current message into v
+func (c *Client) Parse(v any) error {
+	// Nothing to implements
+	return errors.New("no action in Client for method Parse")
+}
+
+// Read get signature from stream
+func (c *Client) Read() (Signature, error) {
+	// Nothing to implements
+	return c.sig, errors.New("no action in Client for method Read")
+}
+
+// RegisterType register custom type
+func (c *Client) RegisterType(v any) {
+	// Nothing to implements
+}
+
+// SetStream set stream io
+func (c *Client) SetStream(stream Connection) {
+	// set stream
+	c.stream = stream
 }
 
 // Stream Get stream
@@ -76,91 +117,4 @@ func (c *Client) Stream() Connection {
 func (c *Client) WithContext(ctx context.Context) {
 	c.ctx = ctx
 	return
-}
-
-// GobClient client for gob serialization
-type GobClient struct {
-	// Common client
-	Client
-	// Gob decoder
-	decoder *gob.Decoder
-	// Gob encoder
-	encoder *gob.Encoder
-}
-
-// Ask server
-func (g *GobClient) Ask(route string, v any) error {
-	g.stream.Buffer().Reset()
-	err := g.encoder.Encode(v)
-	if err != nil {
-		return err
-	}
-	s := GobSignature{
-		route: []byte(route),
-		data:  g.stream.Buffer().Bytes(),
-	}
-	g.stream.Buffer().Reset()
-	_, err = g.stream.Connection().Write(s.Encode(g.stream.Buffer()))
-	return err
-}
-
-// Dial to server
-func (g *GobClient) Dial(address net.Addr) error {
-	conn, err := net.Dial(address.Network(), address.String())
-	if err != nil {
-		return err
-	}
-	g.SetStream(newConnection(conn, bytes.NewBuffer(make([]byte, 0, MinimumSharedBufferSize)), 0))
-	return err
-}
-
-// Parse data to type
-func (g *GobClient) Parse(v any) error {
-	var err error
-	// if signature is empty
-	if g.sig.Len() == 0 {
-		// read data for io
-		_, err = g.Read()
-		if err != nil {
-			return err
-		}
-	}
-	// clear buffer after read
-	g.stream.Buffer().Reset()
-	// write in buffer only data
-	g.stream.Buffer().Write(g.sig.Data())
-	// Reset signature
-	g.sig.Reset()
-	// decode value
-	return g.decoder.Decode(v)
-}
-
-// Signature get from stream
-func (g *GobClient) Read() (Signature, error) {
-	// clear buffer before
-	g.stream.Buffer().Reset()
-	// decode message to signature
-	err := g.sig.Decode(g.stream.Connection(), g.stream.Buffer())
-	return g.sig, err
-}
-
-// RegisterType register type for communication
-func (g *GobClient) RegisterType(v any) {
-	gob.Register(v)
-	return
-}
-
-// SetStream set stream
-func (g *GobClient) SetStream(stream Connection) {
-	// set stream
-	g.stream = stream
-	// set stream
-	g.decoder = gob.NewDecoder(stream.Buffer())
-	// set encoder
-	g.encoder = gob.NewEncoder(stream.Buffer())
-}
-
-// NewGobClient gob client constructor
-func NewGobClient(logger gocli.Logger) IClient {
-	return &GobClient{Client: Client{sig: &GobSignature{}, logger: logger}}
 }

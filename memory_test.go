@@ -2,7 +2,6 @@ package tcpless
 
 import (
 	"github.com/dimonrus/gocli"
-	"net"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -20,17 +19,7 @@ func MemoryHandler(handler Handler) Handler {
 }
 
 func TestServerMemory(t *testing.T) {
-	config := Config{
-		Address: &net.TCPAddr{
-			IP:   net.IPv4(0, 0, 0, 0),
-			Port: 900,
-		},
-		Limits: ConnectionLimit{
-			MaxConnections:   5,
-			SharedBufferSize: 1024,
-			MaxIdle:          time.Second * 10,
-		},
-	}
+	config := getTestConfig()
 	server := NewServer(config, MemoryHandler(nil), NewGobClient, gocli.NewLogger(gocli.LoggerConfig{}))
 	err := server.Start()
 	if err != nil {
@@ -41,10 +30,7 @@ func TestServerMemory(t *testing.T) {
 }
 
 func TestClientMemory(t *testing.T) {
-	address := &net.TCPAddr{
-		IP:   net.IPv4(0, 0, 0, 0),
-		Port: 900,
-	}
+	config := getTestConfig()
 	requests := 1000000
 	parallel := 3
 	wg := sync.WaitGroup{}
@@ -52,12 +38,11 @@ func TestClientMemory(t *testing.T) {
 	for i := 0; i < parallel; i++ {
 		go func() {
 			defer wg.Done()
-			client := NewGobClient(nil)
-			err := client.Dial(address)
+			client := NewGobClient(config, nil)
+			_, err := client.Dial()
 			if err != nil {
 				t.Fatal(err)
 			}
-			//var response *GobSignature
 			for j := 0; j < requests; j++ {
 				//time.Sleep(time.Millisecond * 333)
 				err = client.Ask("memory", []byte("how about memory"))

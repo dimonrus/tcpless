@@ -3,7 +3,6 @@ package tcpless
 import (
 	"fmt"
 	"github.com/dimonrus/gocli"
-	"net"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -69,17 +68,7 @@ func MyHandler(handler Handler) Handler {
 }
 
 func TestServer(t *testing.T) {
-	config := Config{
-		Address: &net.TCPAddr{
-			IP:   net.IPv4(0, 0, 0, 0),
-			Port: 900,
-		},
-		Limits: ConnectionLimit{
-			MaxConnections:   5,
-			SharedBufferSize: 1024,
-			MaxIdle:          time.Second * 10,
-		},
-	}
+	config := getTestConfig()
 	server := NewServer(config, MyHandler(nil), NewGobClient, gocli.NewLogger(gocli.LoggerConfig{}))
 	err := server.Start()
 	if err != nil {
@@ -92,21 +81,18 @@ func TestServer(t *testing.T) {
 }
 
 func TestClient(t *testing.T) {
-	address := &net.TCPAddr{
-		IP:   net.IPv4(0, 0, 0, 0),
-		Port: 900,
-	}
+	config := getTestConfig()
 
-	requests := 1000000
-	parallel := 2
+	requests := 10000000
+	parallel := 4
 
 	wg := sync.WaitGroup{}
 	wg.Add(parallel)
 	for i := 0; i < parallel; i++ {
 		go func() {
 			defer wg.Done()
-			client := NewGobClient(nil)
-			err := client.Dial(address)
+			client := NewGobClient(config, nil)
+			_, err := client.Dial()
 			if err != nil {
 				t.Fatal(err)
 			}
