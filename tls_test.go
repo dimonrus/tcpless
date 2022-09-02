@@ -25,6 +25,7 @@ func getTLSClientConfig() *Config {
 		Enabled:  true,
 		CertPath: "resource/client.crt",
 		KeyPath:  "resource/client.pem",
+		CaPath:   "resource/ca.crt",
 	}
 	return config
 }
@@ -65,8 +66,8 @@ func TestServer_TLSStart(t *testing.T) {
 func TestTLSClient(t *testing.T) {
 	config := getTLSClientConfig()
 
-	requests := 1
-	parallel := 1
+	requests := 1_000_000
+	parallel := 4
 
 	wg := sync.WaitGroup{}
 	wg.Add(parallel)
