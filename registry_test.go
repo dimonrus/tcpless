@@ -68,7 +68,7 @@ func TestHooks(t *testing.T) {
 // pkg: github.com/dimonrus/tcpless
 // cpu: Intel(R) Core(TM) i5-8279U CPU @ 2.40GHz
 // BenchmarkRouteHookRegistry_GetHooks
-// BenchmarkRouteHookRegistry_GetHooks-8   	 4969099	       244.1 ns/op	       0 B/op	       0 allocs/op
+// BenchmarkRouteHookRegistry_GetHooks-8   	27598152	        44.42 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkRouteHookRegistry_GetHooks(b *testing.B) {
 	so.Do(func() {
 		var handler Handler
