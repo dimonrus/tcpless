@@ -44,8 +44,7 @@ func HelloTLS(client IClient) {
 }
 
 func MyTLSHandler(handler Handler) Handler {
-	return handler.
-		Reg("Hello", HelloTLS)
+	return handler.Reg("Hello", HelloTLS)
 }
 
 func TestServer_TLSStart(t *testing.T) {

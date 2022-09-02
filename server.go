@@ -2,6 +2,7 @@ package tcpless
 
 import (
 	"crypto/tls"
+	"errors"
 	"github.com/dimonrus/gocli"
 	"net"
 )
@@ -14,6 +15,8 @@ type Server struct {
 	client  ClientConstructor
 }
 
+var tlsCertificateError = errors.New("no certificate found. Config is empty")
+
 // Start server tcp connections
 func (s *Server) Start() error {
 	var err error
@@ -22,6 +25,9 @@ func (s *Server) Start() error {
 		config, err = s.config.TLS.LoadTLSConfig()
 		if err != nil {
 			return err
+		}
+		if config == nil {
+			return tlsCertificateError
 		}
 		s.pool.listener, err = tls.Listen(s.config.Address.Network(), s.config.Address.String(), config)
 	} else {

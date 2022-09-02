@@ -77,6 +77,9 @@ func (p *pool) process(client IClient) {
 			} else {
 				if callback, ok := registry[sig.Route()]; ok {
 					client.WithContext(context.Background())
+					for _, hook := range routeRegistry.GetHooks(sig.Route()) {
+						hook(client)
+					}
 					callback(client)
 					// clear buffer after, reuse memory
 					client.Stream().Buffer().Reset()

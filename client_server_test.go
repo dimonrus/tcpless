@@ -63,8 +63,13 @@ func Hello(client IClient) {
 }
 
 func MyHandler(handler Handler) Handler {
-	return handler.
-		Reg("Hello", Hello)
+	api := handler.Route("api")
+	api.Hook(func(client IClient) {
+		var i int
+		_ = i
+	})
+	api.Handle("Hello", Hello)
+	return handler
 }
 
 func TestServer(t *testing.T) {
@@ -98,7 +103,7 @@ func TestClient(t *testing.T) {
 			}
 			resp := TestOkResponse{}
 			for j := 0; j < requests; j++ {
-				err = client.Ask("Hello", getTestUser())
+				err = client.Ask("api.Hello", getTestUser())
 				if err != nil {
 					t.Fatal(err)
 				}
