@@ -67,9 +67,10 @@ func (h Handler) Route(route string) Route {
 
 // GetHooks Return hook list based on route
 func (r routeHookRegistry) GetHooks(route string) []Handler {
-	var result = make([]Handler, 8, 8)
+	var result = make([]Handler, 0, 8)
 	var j, k int
-	for i := 0; i < len([]rune(route)); i++ {
+	l := len([]rune(route))
+	for i := 0; i < l; i++ {
 		if route[i] == '.' {
 			if v, ok := routeRegistry[route[:i]]; ok {
 				j += len(v)
