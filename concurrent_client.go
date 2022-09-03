@@ -51,32 +51,62 @@ func (c *concurrentClient) initBuffers(bufferSize int) {
 }
 
 // dial to server
-func (c *concurrentClient) dialClients(client ClientConstructor, config *Config, logger gocli.Logger) error {
-	c.clients = make([]IClient, c.concurrent)
-	for i := 0; i < c.concurrent; i++ {
+func (c *concurrentClient) dialClients(constructor ClientConstructor, config *Config, logger gocli.Logger) error {
+	c.m.Lock()
+	defer c.m.Unlock()
+	if c.clients == nil {
+		c.clients = make([]IClient, 0, c.concurrent)
+	}
+	for i := len(c.clients); i < c.concurrent; i++ {
 		buf, index := c.buffer.Pull()
-		c.clients[i] = client(config, logger)
-		_, err := c.clients[i].Dial()
+		client := constructor(config, logger)
+		_, err := client.Dial()
 		if err != nil {
-			if logger != nil {
-				logger.Errorln(err)
-			}
 			return err
 		}
-		c.clients[i].SetStream(newConnection(c.clients[i].Stream().Connection(), buf, index))
+		client.SetStream(newConnection(client.Stream().Connection(), buf, index))
+		c.clients = append(c.clients, client)
 	}
 	return nil
 }
 
+// RegisterType register type in client
+func (c *concurrentClient) RegisterType(v ...any) {
+	c.m.RLock()
+	defer c.m.RUnlock()
+	for i := range c.clients {
+		for _, t := range v {
+			c.clients[i].RegisterType(t)
+		}
+	}
+}
+
+// get current client
+func (c *concurrentClient) client() (client IClient) {
+	c.m.RLock()
+	defer c.m.RUnlock()
+	return c.clients[c.cursor]
+}
+
+// Ask any data
+func (c *concurrentClient) Ask(route string, request any, response any) (err error) {
+	client := c.client()
+	err = client.Ask(route, request)
+	if err != nil || response == nil {
+		return err
+	}
+	err = client.Parse(response)
+	return
+}
+
 // ConcurrentClient create concurrent client with n, n <= 0 ignores
 // bufferSize - shared buffer size
-func ConcurrentClient(n int, bufferSize int, client ClientConstructor, config *Config, logger gocli.Logger) *concurrentClient {
+func ConcurrentClient(n int, bufferSize int, client ClientConstructor, config *Config, logger gocli.Logger) (*concurrentClient, error) {
 	c := &concurrentClient{}
 	// set n
 	c.concurrentCount(n)
 	// init buffers
 	c.initBuffers(bufferSize)
 	// construct clients
-	_ = c.dialClients(client, config, logger)
-	return c
+	return c, c.dialClients(client, config, logger)
 }
