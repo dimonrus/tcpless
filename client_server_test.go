@@ -38,7 +38,7 @@ func printMemStat() {
 	fmt.Println(memoryReport)
 }
 
-func resetRps() {
+func resetRps(p *pool) {
 	for range ticker.C {
 		fmt.Println("rps is: ", atomic.LoadInt32(&rps))
 		atomic.StoreInt32(&rps, 0)
@@ -79,8 +79,15 @@ func TestServer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	go resetRps()
-	time.Sleep(time.Second * 20)
+	go resetRps(server.pool)
+	time.Sleep(time.Second * 2)
+	server.Stop()
+	time.Sleep(time.Second * 2)
+	err = server.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(time.Second * 200)
 	//c := make(chan os.Signal)
 	//<-c
 }
@@ -88,7 +95,7 @@ func TestServer(t *testing.T) {
 func TestClient(t *testing.T) {
 	config := getTestConfig()
 
-	requests := 10000000
+	requests := 1000000
 	parallel := 4
 
 	wg := sync.WaitGroup{}
@@ -99,20 +106,23 @@ func TestClient(t *testing.T) {
 			client := NewGobClient(config, nil)
 			_, err := client.Dial()
 			if err != nil {
-				t.Fatal(err)
+				fmt.Println(err)
 			}
 			resp := TestOkResponse{}
 			for j := 0; j < requests; j++ {
 				err = client.Ask("api.Hello", getTestUser())
 				if err != nil {
-					t.Fatal(err)
+					fmt.Println(err)
+					return
 				}
 				err = client.Parse(&resp)
 				if err != nil {
-					t.Fatal(err)
+					fmt.Println(err)
+					return
 				}
 				if resp.Msg != "ok" {
-					t.Fatal("wrong response")
+					fmt.Println("wrong response")
+					return
 				}
 			}
 			_ = client.Close()

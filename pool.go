@@ -62,6 +62,17 @@ func (p *pool) removeConnection(c *connection) {
 	p.buffer.Release(c.index)
 }
 
+// release connection and exit from idle
+func (p *pool) release() {
+	p.m.Lock()
+	defer p.m.Unlock()
+	for _, c := range p.connections {
+		c.done <- struct{}{}
+	}
+	_ = p.listener.Close()
+	p.listener = nil
+}
+
 func (p *pool) process(client IClient) {
 	for {
 		select {

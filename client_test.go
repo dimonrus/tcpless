@@ -1,6 +1,7 @@
 package tcpless
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -38,7 +39,7 @@ func BenchmarkGobClient_Parse(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			err := cl.Ask("Hello", user)
 			if err != nil {
-				b.Fatal(err)
+				fmt.Println(err)
 			}
 		}
 	}(client)

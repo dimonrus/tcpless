@@ -36,6 +36,18 @@ func (g *GobClient) Ask(route string, v any) error {
 	return err
 }
 
+// AskBytes send bytes
+func (g *GobClient) AskBytes(route string, b []byte) error {
+	g.stream.Buffer().Reset()
+	s := GobSignature{
+		route: []byte(route),
+		data:  b,
+	}
+	g.stream.Buffer().Reset()
+	_, err := g.stream.Connection().Write(s.Encode(g.stream.Buffer()))
+	return err
+}
+
 // Dial to server
 func (g *GobClient) Dial() (net.Conn, error) {
 	conn, err := g.Client.Dial()

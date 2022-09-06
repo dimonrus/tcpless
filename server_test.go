@@ -12,7 +12,7 @@ func getTestConfig() *Config {
 			Port: 900,
 		},
 		Limits: ConnectionLimit{
-			MaxConnections:   5,
+			MaxConnections:   10,
 			SharedBufferSize: 1024,
 			MaxIdle:          time.Second * 10,
 		},

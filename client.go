@@ -16,8 +16,10 @@ type ClientConstructor func(config *Config, logger gocli.Logger) IClient
 
 // IClient interface for communication
 type IClient interface {
-	// Ask any message
+	// Ask custom type message
 	Ask(route string, v any) error
+	// AskBytes send bytes
+	AskBytes(route string, b []byte) error
 	// Close stream
 	Close() error
 	// Ctx get context
@@ -54,6 +56,12 @@ type Client struct {
 
 // Ask any message
 func (c *Client) Ask(route string, v any) error {
+	// Nothing to implements
+	return errors.New("no action in base Client")
+}
+
+// AskBytes any message
+func (c *Client) AskBytes(route string, b []byte) error {
 	// Nothing to implements
 	return errors.New("no action in base Client")
 }

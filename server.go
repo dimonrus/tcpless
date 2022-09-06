@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/dimonrus/gocli"
 	"net"
+	"runtime"
 )
 
 // Server server main struct
@@ -13,6 +14,7 @@ type Server struct {
 	pool    *pool
 	handler Handler
 	client  ClientConstructor
+	stop    chan struct{}
 }
 
 var tlsCertificateError = errors.New("no certificate found. Config is empty")
@@ -29,9 +31,13 @@ func (s *Server) Start() error {
 		if config == nil {
 			return tlsCertificateError
 		}
+		s.pool.m.Lock()
 		s.pool.listener, err = tls.Listen(s.config.Address.Network(), s.config.Address.String(), config)
+		s.pool.m.Unlock()
 	} else {
+		s.pool.m.Lock()
 		s.pool.listener, err = net.Listen(s.config.Address.Network(), s.config.Address.String())
+		s.pool.m.Unlock()
 	}
 	go s.idle()
 	return err
@@ -39,21 +45,29 @@ func (s *Server) Start() error {
 
 // Stop close all tcp connections
 func (s *Server) Stop() {
-
-}
-
-// Restart stop and start tcp serving
-func (s *Server) Restart() {
-
+	s.stop <- struct{}{}
 }
 
 // Idle listen connection
 func (s *Server) idle() {
+	chCon := make(chan *connection)
 	for {
-		c := s.pool.connection()
-		client := s.client(s.config, s.logger)
-		client.SetStream(c)
-		go s.pool.process(client)
+		go func() {
+			chCon <- s.pool.connection()
+		}()
+		select {
+		// release all connections and stop pool process
+		case <-s.stop:
+			s.pool.release()
+
+			runtime.GC()
+			return
+		// listen connections
+		case c := <-chCon:
+			client := s.client(s.config, s.logger)
+			client.SetStream(c)
+			go s.pool.process(client)
+		}
 	}
 }
 
@@ -66,6 +80,7 @@ func NewServer(config *Config, handler Handler, client ClientConstructor, logger
 	return &Server{
 		client:  client,
 		handler: handler,
+		stop:    make(chan struct{}),
 		options: opt,
 		pool: &pool{
 			buffer:      CreateBuffer(int(config.Limits.MaxConnections), int(config.Limits.SharedBufferSize)),
