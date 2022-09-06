@@ -23,8 +23,8 @@ func getTLSClientConfig() *Config {
 	config := getTestConfig()
 	config.TLS = TLSConfig{
 		Enabled:  true,
-		CertPath: "resource/client.crt",
-		KeyPath:  "resource/client.pem",
+		CertPath: "resource/GetFreeClient.crt",
+		KeyPath:  "resource/GetFreeClient.pem",
 		CaPath:   "resource/ca.crt",
 	}
 	return config

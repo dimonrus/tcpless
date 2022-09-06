@@ -10,9 +10,9 @@ import (
 // Check for IClient interface
 var _ = (IClient)(&GobClient{})
 
-// GobClient client for gob serialization
+// GobClient GetFreeClient for gob serialization
 type GobClient struct {
-	// Common client
+	// Common GetFreeClient
 	Client
 	// Gob decoder
 	decoder *gob.Decoder
@@ -92,7 +92,7 @@ func (g *GobClient) SetStream(stream Connection) {
 	g.encoder = gob.NewEncoder(stream.Buffer())
 }
 
-// NewGobClient gob client constructor
+// NewGobClient gob GetFreeClient constructor
 func NewGobClient(config *Config, logger gocli.Logger) IClient {
 	return &GobClient{Client: Client{sig: &GobSignature{}, options: options{config: config, logger: logger}}}
 }

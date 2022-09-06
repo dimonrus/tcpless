@@ -11,6 +11,10 @@ const (
 	DefaultSharedBufferSize = 1024 * 1024 * 4 // 4 MB
 	// MinimumSharedBufferSize - 2 KB
 	MinimumSharedBufferSize = 1024 * 2 // 2 KB
+	// ClientModeResponder Client can't ask
+	ClientModeResponder = 0
+	// ClientModeAsker client can't respond
+	ClientModeAsker = 1
 )
 
 // Common parts for configs
@@ -29,6 +33,8 @@ type Config struct {
 	Limits ConnectionLimit
 	// TLS configuration
 	TLS TLSConfig
+	// Mode client mode. 0 - Responder, - 1 Asker
+	Mode uint8
 }
 
 // ConnectionLimit limits for connection

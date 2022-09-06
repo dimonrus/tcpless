@@ -3,6 +3,7 @@ package tcpless
 import (
 	"fmt"
 	"github.com/dimonrus/gocli"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -39,25 +40,40 @@ func TestConcurrentServer(t *testing.T) {
 		t.Fatal(err)
 	}
 	go resetRps()
-	time.Sleep(time.Second * 20)
+	time.Sleep(time.Second * 30)
 	//c := make(chan os.Signal)
 	//<-c
 }
-
 func TestConcurrentClient_Ask(t *testing.T) {
 	cc, err := ConcurrentClient(5, 0, NewGobClient, getTestConfig(), gocli.NewLogger(gocli.LoggerConfig{}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	user := getTestUser()
-	userCreate := TestUserUserCreate{}
-	resp := TestResponse{
-		Data: &userCreate,
+	cc.RegisterType(&TestUserUserCreate{})
+
+	request := make(chan any, cc.GetConcurrent())
+	result := make(chan TestUserUserCreate, 1_000_000)
+	wg := sync.WaitGroup{}
+	wg.Add(1_000_000)
+
+	cc.Call("api.hello", request, func(client IClient) {
+		defer wg.Done()
+		resp := TestResponse{
+			Data: &TestUserUserCreate{},
+		}
+		err = client.Parse(&resp)
+		if err != nil {
+			client.Logger().Errorln(err)
+		}
+		result <- *resp.Data.(*TestUserUserCreate)
+	})
+
+	for i := 0; i < 1000000; i++ {
+		request <- getTestUser()
 	}
-	cc.RegisterType(&userCreate)
-	err = cc.Ask("api.hello", user, &resp)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log(*resp.Data.(*TestUserUserCreate).Id)
+	close(request)
+	wg.Wait()
+
+	t.Log(len(result))
+	t.Log(<-result)
 }

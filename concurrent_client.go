@@ -5,13 +5,13 @@ import (
 	"sync"
 )
 
-// concurrentClient client for concurrent request
+// concurrentClient GetFreeClient for concurrent request
 type concurrentClient struct {
 	m sync.RWMutex
 	// concurrent clients
 	clients []IClient
-	// current client
-	cursor int
+	// current GetFreeClient
+	free []bool
 	// max parallel requests
 	concurrent int
 	// buffer pool
@@ -57,6 +57,9 @@ func (c *concurrentClient) dialClients(constructor ClientConstructor, config *Co
 	if c.clients == nil {
 		c.clients = make([]IClient, 0, c.concurrent)
 	}
+	if c.free == nil {
+		c.free = make([]bool, 0, c.concurrent)
+	}
 	for i := len(c.clients); i < c.concurrent; i++ {
 		buf, index := c.buffer.Pull()
 		client := constructor(config, logger)
@@ -66,11 +69,12 @@ func (c *concurrentClient) dialClients(constructor ClientConstructor, config *Co
 		}
 		client.SetStream(newConnection(client.Stream().Connection(), buf, index))
 		c.clients = append(c.clients, client)
+		c.free = append(c.free, true)
 	}
 	return nil
 }
 
-// RegisterType register type in client
+// RegisterType register type in GetFreeClient
 func (c *concurrentClient) RegisterType(v ...any) {
 	c.m.RLock()
 	defer c.m.RUnlock()
@@ -81,25 +85,56 @@ func (c *concurrentClient) RegisterType(v ...any) {
 	}
 }
 
-// get current client
-func (c *concurrentClient) client() (client IClient) {
-	c.m.RLock()
-	defer c.m.RUnlock()
-	return c.clients[c.cursor]
+// GetConcurrent get number of concurrent connections
+func (c *concurrentClient) GetConcurrent() (n int) {
+	return c.concurrent
 }
 
-// Ask any data
-func (c *concurrentClient) Ask(route string, request any, response any) (err error) {
-	client := c.client()
-	err = client.Ask(route, request)
-	if err != nil || response == nil {
-		return err
+// GetFreeClient get free stream
+func (c *concurrentClient) GetFreeClient() (client IClient, i int) {
+	c.m.Lock()
+	defer c.m.Unlock()
+	for ; !c.free[i]; i++ {
+		if i == c.concurrent {
+			i = 0
+		}
 	}
-	err = client.Parse(response)
+	c.free[i] = false
+	client = c.clients[i]
 	return
 }
 
-// ConcurrentClient create concurrent client with n, n <= 0 ignores
+// ReleaseClient release by index
+func (c *concurrentClient) ReleaseClient(index int) {
+	c.m.Lock()
+	defer c.m.Unlock()
+	c.free[index] = true
+	return
+}
+
+// Call concurrent ask
+// route - URI to server handler& Example: api.v1.hello
+// request - chan with collection of requests
+// processor - process handler if server respond to client
+func (c *concurrentClient) Call(route string, request chan any, processor Handler) {
+	for i := 0; i < c.concurrent; i++ {
+		go func(route string, request chan any) {
+			client, index := c.GetFreeClient()
+			defer c.ReleaseClient(index)
+			for r := range request {
+				err := client.Ask(route, r)
+				if err != nil {
+					c.options.logger.Errorln(err)
+					return
+				}
+				processor(client)
+			}
+		}(route, request)
+	}
+	return
+}
+
+// ConcurrentClient create concurrent GetFreeClient with n, n <= 0 ignores
 // bufferSize - shared buffer size
 func ConcurrentClient(n int, bufferSize int, client ClientConstructor, config *Config, logger gocli.Logger) (*concurrentClient, error) {
 	c := &concurrentClient{}

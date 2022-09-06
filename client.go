@@ -11,7 +11,7 @@ import (
 // Check for IClient interface
 var _ = (IClient)(&Client{})
 
-// ClientConstructor func for specific client init
+// ClientConstructor func for specific GetFreeClient init
 type ClientConstructor func(config *Config, logger gocli.Logger) IClient
 
 // IClient interface for communication

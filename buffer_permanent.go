@@ -17,7 +17,6 @@ type PermanentBuffer struct {
 func (b *PermanentBuffer) Next(n int) []byte {
 	if n+b.off > cap(b.data) {
 		panic("n + offset > cap(data); check your shared buffer size")
-		return nil
 	}
 	res := b.data[b.off : b.off+n]
 	b.off += n
@@ -75,7 +74,6 @@ func (b *PermanentBuffer) Write(data []byte) (n int, err error) {
 	err = nil
 	if len(data)+b.off > cap(b.data) {
 		panic("len(data) + offset > cap(data)")
-		return
 	}
 	n = copy(b.data[b.off:], data[:])
 	b.off += n
