@@ -7,8 +7,11 @@ import (
 	"unsafe"
 )
 
-// Signature common interface
-type Signature interface {
+// Check Signature for ISignature interface
+var _ = (ISignature)(&Signature{})
+
+// ISignature common interface
+type ISignature interface {
 	// Data useful message
 	Data() []byte
 	// Decode byte message
@@ -27,8 +30,8 @@ type Signature interface {
 	Write(p []byte) (n int, err error)
 }
 
-// GobSignature standard handler signature
-type GobSignature struct {
+// Signature standard handler signature
+type Signature struct {
 	// route
 	route []byte
 	// data
@@ -36,14 +39,14 @@ type GobSignature struct {
 }
 
 // Data get useful message
-func (h *GobSignature) Data() []byte {
+func (h *Signature) Data() []byte {
 	return h.data
 }
 
 // Decode message from io
 // r - input with bytes
 // buf - bytes buffer
-func (h *GobSignature) Decode(r io.Reader, buf *bytes.Buffer) error {
+func (h *Signature) Decode(r io.Reader, buf *bytes.Buffer) error {
 	// store data
 	data := buf.Bytes()
 	// read first 4 bytes
@@ -74,7 +77,7 @@ func (h *GobSignature) Decode(r io.Reader, buf *bytes.Buffer) error {
 }
 
 // Encode to byte message
-func (h *GobSignature) Encode(buf *bytes.Buffer) []byte {
+func (h *Signature) Encode(buf *bytes.Buffer) []byte {
 	// reset buffer before next usage
 	buf.Reset()
 	// route length
@@ -108,30 +111,38 @@ func (h *GobSignature) Encode(buf *bytes.Buffer) []byte {
 }
 
 // Len Length of current message
-func (h *GobSignature) Len() uint64 {
+func (h *Signature) Len() uint64 {
 	return uint64(len(h.data))
 }
 
 // Read all bytes
-func (h *GobSignature) Read(p []byte) (n int, err error) {
+func (h *Signature) Read(p []byte) (n int, err error) {
 	n = copy(p, h.data[:])
 	return
 }
 
 // Reset signature
-func (h *GobSignature) Reset() {
+func (h *Signature) Reset() {
 	h.route = nil
 	h.data = nil
 	return
 }
 
 // Route get route
-func (h *GobSignature) Route() string {
+func (h *Signature) Route() string {
 	return *(*string)(unsafe.Pointer(&h.route))
 }
 
 // Write rewrite bytes
-func (h *GobSignature) Write(p []byte) (n int, err error) {
+func (h *Signature) Write(p []byte) (n int, err error) {
 	n = copy(h.data[:], p)
 	return
+}
+
+// CreateSignature prepare Signature struct
+func CreateSignature(route []byte, data []byte) Signature {
+	return Signature{
+		route: route,
+		data:  data,
+	}
 }

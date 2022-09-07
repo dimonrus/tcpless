@@ -10,7 +10,7 @@ var testBuffer = CreateBuffer(10, 1024)
 
 var HelloHelloWorldSignature = []byte{5, 0, 0, 10, 72, 101, 108, 108, 111, 72, 101, 108, 108, 111, 87, 111, 114, 108, 100}
 
-func getTestPipe() (server Connection, client Connection) {
+func getTestPipe() (server Streamer, client Streamer) {
 	srv := &connection{done: make(chan struct{})}
 	cl := &connection{done: make(chan struct{})}
 	srv.Conn, cl.Conn = net.Pipe()
@@ -33,8 +33,8 @@ func getTestClientServer() (client IClient, server IClient) {
 }
 
 func TestGobSignature_Encode(t *testing.T) {
-	sig := GobSignature{route: []byte("Hello"), data: []byte("HelloWorld")}
-	res := GobSignature{}
+	sig := Signature{route: []byte("Hello"), data: []byte("HelloWorld")}
+	res := Signature{}
 	buf, index := testBuffer.Pull()
 	defer testBuffer.Release(index)
 	reader := bytes.NewBuffer(nil)
@@ -55,7 +55,7 @@ func TestGobSignature_Decode(t *testing.T) {
 	reader := bytes.NewBuffer(nil)
 	buf, index := testBuffer.Pull()
 	defer testBuffer.Release(index)
-	sig := GobSignature{}
+	sig := Signature{}
 	for i := 0; i < 1000; i++ {
 		reader.Write(HelloHelloWorldSignature)
 		err := sig.Decode(reader, buf)
@@ -78,7 +78,7 @@ func TestGobSignature_Decode(t *testing.T) {
 // BenchmarkGobSignature_Encode
 // BenchmarkGobSignature_Encode-8   	65650748	        17.49 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkGobSignature_Encode(b *testing.B) {
-	sig := GobSignature{route: []byte("Hello"), data: []byte("HelloWorld")}
+	sig := Signature{route: []byte("Hello"), data: []byte("HelloWorld")}
 	buf, _ := testBuffer.Pull()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -95,7 +95,7 @@ func BenchmarkGobSignature_Encode(b *testing.B) {
 // BenchmarkGobSignature_Decode-8   	53649286	        21.76 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkGobSignature_Decode(b *testing.B) {
 	reader := bytes.NewBuffer(nil)
-	sig := &GobSignature{}
+	sig := &Signature{}
 	buf, _ := testBuffer.Pull()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

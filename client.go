@@ -31,13 +31,15 @@ type IClient interface {
 	// Parse current message
 	Parse(v any) error
 	// Read get signature from stream
-	Read() (Signature, error)
+	Read() (ISignature, error)
 	// RegisterType register custom type
 	RegisterType(v any)
 	// SetStream set stream io
-	SetStream(stream Connection)
+	SetStream(stream Streamer)
+	// Signature return signature
+	Signature() ISignature
 	// Stream Get stream
-	Stream() Connection
+	Stream() Streamer
 	// WithContext With context
 	WithContext(ctx context.Context)
 }
@@ -45,9 +47,9 @@ type IClient interface {
 // Client structure
 type Client struct {
 	// connection
-	stream Connection
+	stream Streamer
 	// signature
-	sig Signature
+	sig ISignature
 	// context
 	ctx context.Context
 	// options
@@ -100,7 +102,7 @@ func (c *Client) Parse(v any) error {
 }
 
 // Read get signature from stream
-func (c *Client) Read() (Signature, error) {
+func (c *Client) Read() (ISignature, error) {
 	// Nothing to implements
 	return c.sig, errors.New("no action in Client for method Read")
 }
@@ -111,13 +113,18 @@ func (c *Client) RegisterType(v any) {
 }
 
 // SetStream set stream io
-func (c *Client) SetStream(stream Connection) {
+func (c *Client) SetStream(stream Streamer) {
 	// set stream
 	c.stream = stream
 }
 
+// Signature return signature
+func (c *Client) Signature() ISignature {
+	return c.sig
+}
+
 // Stream Get stream
-func (c *Client) Stream() Connection {
+func (c *Client) Stream() Streamer {
 	return c.stream
 }
 
@@ -125,4 +132,9 @@ func (c *Client) Stream() Connection {
 func (c *Client) WithContext(ctx context.Context) {
 	c.ctx = ctx
 	return
+}
+
+// CreateClient create base client
+func CreateClient(config *Config, sig ISignature, logger gocli.Logger) Client {
+	return Client{sig: sig, options: options{config: config, logger: logger}}
 }

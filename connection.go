@@ -5,8 +5,8 @@ import (
 	"net"
 )
 
-// Connection interface
-type Connection interface {
+// Streamer interface
+type Streamer interface {
 	// Buffer get buffer
 	Buffer() *bytes.Buffer
 	// Connection get connection
@@ -19,7 +19,7 @@ type Connection interface {
 	Release() error
 }
 
-// Connection structure
+// connection structure must implements streamer interface
 type connection struct {
 	net.Conn
 	// is connection can be released
@@ -55,8 +55,8 @@ func (c *connection) Release() error {
 	return c.Conn.Close()
 }
 
-// New connection
-func newConnection(conn net.Conn, buf *bytes.Buffer, index uint16) *connection {
+// NewConnection prepare streamer
+func NewConnection(conn net.Conn, buf *bytes.Buffer, index uint16) *connection {
 	return &connection{
 		Conn:   conn,
 		done:   make(chan struct{}),

@@ -19,9 +19,9 @@ const (
 
 // Common parts for configs
 type options struct {
-	// Config
+	// config
 	config *Config
-	// Logger
+	// logger
 	logger gocli.Logger
 }
 

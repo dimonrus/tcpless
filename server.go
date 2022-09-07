@@ -59,7 +59,6 @@ func (s *Server) idle() {
 		// release all connections and stop pool process
 		case <-s.stop:
 			s.pool.release()
-
 			runtime.GC()
 			return
 		// listen connections

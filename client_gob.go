@@ -27,7 +27,7 @@ func (g *GobClient) Ask(route string, v any) error {
 	if err != nil {
 		return err
 	}
-	s := GobSignature{
+	s := Signature{
 		route: []byte(route),
 		data:  g.stream.Buffer().Bytes(),
 	}
@@ -39,7 +39,7 @@ func (g *GobClient) Ask(route string, v any) error {
 // AskBytes send bytes
 func (g *GobClient) AskBytes(route string, b []byte) error {
 	g.stream.Buffer().Reset()
-	s := GobSignature{
+	s := Signature{
 		route: []byte(route),
 		data:  b,
 	}
@@ -54,7 +54,7 @@ func (g *GobClient) Dial() (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	g.SetStream(newConnection(conn, bytes.NewBuffer(make([]byte, 0, MinimumSharedBufferSize)), 0))
+	g.SetStream(NewConnection(conn, bytes.NewBuffer(make([]byte, 0, MinimumSharedBufferSize)), 0))
 	return conn, nil
 }
 
@@ -79,8 +79,8 @@ func (g *GobClient) Parse(v any) error {
 	return g.decoder.Decode(v)
 }
 
-// Signature get from stream
-func (g *GobClient) Read() (Signature, error) {
+// ISignature get from stream
+func (g *GobClient) Read() (ISignature, error) {
 	// clear buffer before
 	g.stream.Buffer().Reset()
 	// decode message to signature
@@ -95,7 +95,7 @@ func (g *GobClient) RegisterType(v any) {
 }
 
 // SetStream set stream
-func (g *GobClient) SetStream(stream Connection) {
+func (g *GobClient) SetStream(stream Streamer) {
 	// set stream
 	g.stream = stream
 	// set stream
@@ -106,5 +106,5 @@ func (g *GobClient) SetStream(stream Connection) {
 
 // NewGobClient gob GetFreeClient constructor
 func NewGobClient(config *Config, logger gocli.Logger) IClient {
-	return &GobClient{Client: Client{sig: &GobSignature{}, options: options{config: config, logger: logger}}}
+	return &GobClient{Client: CreateClient(config, &Signature{}, logger)}
 }

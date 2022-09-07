@@ -67,7 +67,7 @@ func (c *concurrentClient) dialClients(constructor ClientConstructor, config *Co
 		if err != nil {
 			return err
 		}
-		client.SetStream(newConnection(client.Stream().Connection(), buf, index))
+		client.SetStream(NewConnection(client.Stream().Connection(), buf, index))
 		c.clients = append(c.clients, client)
 		c.free = append(c.free, true)
 	}
