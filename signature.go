@@ -18,6 +18,10 @@ type ISignature interface {
 	Decode(r io.Reader, buf *bytes.Buffer) error
 	// Encode byte message
 	Encode(buf *bytes.Buffer) []byte
+	// Encryptor get data encryptor
+	Encryptor() DataEncryptor
+	// InitEncryptor return init data encryptor constructor
+	InitEncryptor(buf *bytes.Buffer)
 	// Len of data
 	Len() uint64
 	// Read implements reader interface
@@ -36,6 +40,10 @@ type Signature struct {
 	route []byte
 	// data
 	data []byte
+	// apply with buffer on set stream method
+	initEncryptor DataEncryptorConstructor
+	// data encryptor
+	encryptor DataEncryptor
 }
 
 // Data get useful message
@@ -110,6 +118,17 @@ func (h *Signature) Encode(buf *bytes.Buffer) []byte {
 	return buf.Bytes()
 }
 
+// Encryptor get data encryptor
+func (h *Signature) Encryptor() DataEncryptor {
+	return h.encryptor
+}
+
+// InitEncryptor init encryptor
+func (h *Signature) InitEncryptor(buf *bytes.Buffer) {
+	h.encryptor = h.initEncryptor(buf)
+	return
+}
+
 // Len Length of current message
 func (h *Signature) Len() uint64 {
 	return uint64(len(h.data))
@@ -140,9 +159,10 @@ func (h *Signature) Write(p []byte) (n int, err error) {
 }
 
 // CreateSignature prepare Signature struct
-func CreateSignature(route []byte, data []byte) Signature {
+func CreateSignature(route []byte, data []byte, initEncryptor DataEncryptorConstructor) Signature {
 	return Signature{
-		route: route,
-		data:  data,
+		route:         route,
+		data:          data,
+		initEncryptor: initEncryptor,
 	}
 }

@@ -17,7 +17,7 @@ func ConcurrentHello(client IClient) {
 		fmt.Println(err)
 	}
 	so.Do(func() {
-		client.RegisterType(&TestUserUserCreate{})
+		client.Signature().Encryptor().RegisterType(&TestUserUserCreate{})
 	})
 	resp := getTestResponse()
 	err = client.Ask("response", resp)

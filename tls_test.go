@@ -93,7 +93,7 @@ func TestTLSClient(t *testing.T) {
 					fmt.Println("wrong response")
 				}
 			}
-			_ = client.Close()
+			_ = client.Stream().Release()
 		}()
 	}
 	wg.Wait()

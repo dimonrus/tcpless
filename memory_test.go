@@ -55,7 +55,7 @@ func TestClientMemory(t *testing.T) {
 					return
 				}
 			}
-			_ = client.Close()
+			_ = client.Stream().Release()
 		}()
 	}
 	wg.Wait()

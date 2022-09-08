@@ -25,6 +25,12 @@ func TestBuffer_Pull(t *testing.T) {
 	}
 }
 
+// goos: darwin
+// goarch: amd64
+// pkg: github.com/dimonrus/tcpless
+// cpu: Intel(R) Core(TM) i5-8279U CPU @ 2.40GHz
+// BenchmarkBuffer_Pull
+// BenchmarkBuffer_Pull-8   	192429373	         6.165 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkBuffer_Pull(b *testing.B) {
 	buf := CreateBuffer(20, 100)
 	bt, _ := buf.Pull()

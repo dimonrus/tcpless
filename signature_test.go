@@ -33,7 +33,7 @@ func getTestClientServer() (client IClient, server IClient) {
 }
 
 func TestGobSignature_Encode(t *testing.T) {
-	sig := Signature{route: []byte("Hello"), data: []byte("HelloWorld")}
+	sig := CreateSignature([]byte("Hello"), []byte("HelloWorld"), nil)
 	res := Signature{}
 	buf, index := testBuffer.Pull()
 	defer testBuffer.Release(index)
@@ -78,7 +78,7 @@ func TestGobSignature_Decode(t *testing.T) {
 // BenchmarkGobSignature_Encode
 // BenchmarkGobSignature_Encode-8   	65650748	        17.49 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkGobSignature_Encode(b *testing.B) {
-	sig := Signature{route: []byte("Hello"), data: []byte("HelloWorld")}
+	sig := CreateSignature([]byte("Hello"), []byte("HelloWorld"), nil)
 	buf, _ := testBuffer.Pull()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -95,7 +95,7 @@ func BenchmarkGobSignature_Encode(b *testing.B) {
 // BenchmarkGobSignature_Decode-8   	53649286	        21.76 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkGobSignature_Decode(b *testing.B) {
 	reader := bytes.NewBuffer(nil)
-	sig := &Signature{}
+	sig := CreateSignature(nil, nil, nil)
 	buf, _ := testBuffer.Pull()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

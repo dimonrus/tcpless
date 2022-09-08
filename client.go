@@ -3,7 +3,6 @@ package tcpless
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"github.com/dimonrus/gocli"
 	"net"
 )
@@ -20,8 +19,6 @@ type IClient interface {
 	Ask(route string, v any) error
 	// AskBytes send bytes
 	AskBytes(route string, b []byte) error
-	// Close stream
-	Close() error
 	// Ctx get context
 	Ctx() context.Context
 	// Dial to server
@@ -32,8 +29,6 @@ type IClient interface {
 	Parse(v any) error
 	// Read get signature from stream
 	Read() (ISignature, error)
-	// RegisterType register custom type
-	RegisterType(v any)
 	// SetStream set stream io
 	SetStream(stream Streamer)
 	// Signature return signature
@@ -56,16 +51,39 @@ type Client struct {
 	options options
 }
 
-// Ask any message
+// Ask server route
 func (c *Client) Ask(route string, v any) error {
-	// Nothing to implements
-	return errors.New("no action in base Client")
+	// reset buffer
+	c.stream.Buffer().Reset()
+	// encode v to bytes
+	err := c.sig.Encryptor().Encode(v)
+	if err != nil {
+		return err
+	}
+	// create signature
+	s := Signature{
+		route: []byte(route),
+		data:  c.stream.Buffer().Bytes(),
+	}
+	// reset buffer
+	c.stream.Buffer().Reset()
+	// send data to stream
+	_, err = c.stream.Connection().Write(s.Encode(c.stream.Buffer()))
+	return err
 }
 
-// AskBytes any message
+// AskBytes send bytes
 func (c *Client) AskBytes(route string, b []byte) error {
-	// Nothing to implements
-	return errors.New("no action in base Client")
+	// reset buffer
+	c.stream.Buffer().Reset()
+	// create signature
+	s := Signature{
+		route: []byte(route),
+		data:  b,
+	}
+	// write bytes into connection
+	_, err := c.stream.Connection().Write(s.Encode(c.stream.Buffer()))
+	return err
 }
 
 // Dial to server
@@ -80,11 +98,6 @@ func (c *Client) Dial() (net.Conn, error) {
 	return net.Dial(c.options.config.Address.Network(), c.options.config.Address.String())
 }
 
-// Close stream
-func (c *Client) Close() error {
-	return c.stream.Release()
-}
-
 // Ctx get context
 func (c *Client) Ctx() context.Context {
 	return c.ctx
@@ -95,27 +108,43 @@ func (c *Client) Logger() gocli.Logger {
 	return c.options.logger
 }
 
-// Parse current message into v
+// Parse data to type
 func (c *Client) Parse(v any) error {
-	// Nothing to implements
-	return errors.New("no action in Client for method Parse")
+	var err error
+	// if signature is empty
+	if c.sig.Len() == 0 {
+		// read data for io
+		_, err = c.Read()
+		if err != nil {
+			return err
+		}
+	}
+	// clear buffer after read
+	c.stream.Buffer().Reset()
+	// write in buffer only data
+	c.stream.Buffer().Write(c.sig.Data())
+	// Reset signature
+	c.sig.Reset()
+	// decode value
+	return c.Signature().Encryptor().Decode(v)
 }
 
 // Read get signature from stream
 func (c *Client) Read() (ISignature, error) {
-	// Nothing to implements
-	return c.sig, errors.New("no action in Client for method Read")
-}
-
-// RegisterType register custom type
-func (c *Client) RegisterType(v any) {
-	// Nothing to implements
+	// clear buffer before
+	c.stream.Buffer().Reset()
+	// decode message to signature
+	err := c.sig.Decode(c.stream.Connection(), c.stream.Buffer())
+	// return signature and error
+	return c.sig, err
 }
 
 // SetStream set stream io
 func (c *Client) SetStream(stream Streamer) {
 	// set stream
 	c.stream = stream
+	// set up encryptor
+	c.sig.InitEncryptor(stream.Buffer())
 }
 
 // Signature return signature

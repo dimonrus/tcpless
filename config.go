@@ -28,7 +28,7 @@ type options struct {
 // Config server configuration
 type Config struct {
 	// tcp address
-	Address net.Addr
+	Address *net.TCPAddr
 	// connection limits
 	Limits ConnectionLimit
 	// TLS configuration
@@ -40,9 +40,9 @@ type Config struct {
 // ConnectionLimit limits for connection
 type ConnectionLimit struct {
 	// Maximum number of connection
-	MaxConnections uint16
+	MaxConnections uint16 `yaml:"maxConnections"`
 	// Max idle time before connection will be closed
-	MaxIdle time.Duration
+	MaxIdle time.Duration `yaml:"maxIdle"`
 	// Max process body size
-	SharedBufferSize int32
+	SharedBufferSize int32 `yaml:"sharedBufferSize"`
 }

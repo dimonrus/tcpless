@@ -26,7 +26,7 @@ func (c *concurrentClient) Close() error {
 	defer c.m.Unlock()
 	var err error
 	for i := range c.clients {
-		err = c.clients[i].Close()
+		err = c.clients[i].Stream().Release()
 		c.buffer.Release(c.clients[i].Stream().Index())
 	}
 	return err
@@ -80,7 +80,7 @@ func (c *concurrentClient) RegisterType(v ...any) {
 	defer c.m.RUnlock()
 	for i := range c.clients {
 		for _, t := range v {
-			c.clients[i].RegisterType(t)
+			c.clients[i].Signature().Encryptor().RegisterType(t)
 		}
 	}
 }
