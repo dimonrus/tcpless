@@ -95,6 +95,9 @@ func (p *pool) process(client IClient) {
 					// clear buffer after, reuse memory
 					client.Stream().Buffer().Reset()
 					sig.Reset()
+				} else {
+					p.removeConnection(client.Stream().(*connection))
+					return
 				}
 			}
 		}
