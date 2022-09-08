@@ -1,0 +1,9 @@
+depends:
+tcpLess:
+  address:
+    ip: 0.0.0.0
+    port: 900
+  limits:
+    maxConnections: 10
+    maxIdle: 60
+    sharedBufferSize: 2048
