@@ -33,11 +33,25 @@ func StartClient(config *tcpless.Config, app gocli.Application) {
 				app.FailMessage(err.Error())
 				return
 			}
+			so.Do(func() {
+				client.Signature().Encryptor().RegisterType(&TestUserUserCreate{})
+			})
 			for j := 0; j < requests; j++ {
 				err = client.Hello(getTestUser())
 				if err != nil {
 					app.FailMessage(err.Error())
 					return
+				}
+				resp := TestResponse{
+					Data: &TestUserUserCreate{},
+				}
+				err = client.Parse(&resp)
+				if err != nil {
+					app.FailMessage(err.Error())
+					return
+				}
+				if *resp.Data.(*TestUserUserCreate).Id != 1235813 {
+					app.FailMessage("response id is incorrect")
 				}
 			}
 			_ = client.Stream().Release()
