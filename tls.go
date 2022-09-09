@@ -10,13 +10,13 @@ import (
 // TLSConfig configuration
 type TLSConfig struct {
 	// Is enabled
-	Enabled bool
+	Enabled bool `yaml:"enabled"`
 	// Root CA path
-	CaPath string
+	CaPath string `yaml:"caPath"`
 	// Path to cert
-	CertPath string
+	CertPath string `yaml:"certPath"`
 	// Path to key
-	KeyPath string
+	KeyPath string `yaml:"keyPath"`
 	// lazy load
 	config *tls.Config
 	// once load config

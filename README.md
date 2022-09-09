@@ -4,6 +4,7 @@ library for golang rpc tcp serving using gob encoder/decoder
 
 ### Features
 - TCP RPC server with good performance based on gob package for encode/decode
+- Connection pool
 - Possible to implement your own encrypt/decrypt data protocol
 - Contains client and concurrent client implementation
 - Supports TLS

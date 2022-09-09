@@ -1,0 +1,5 @@
+depends: local
+tcpLess:
+  tls:
+    certPath: resource/client.crt
+    keyPath: resource/client.pem

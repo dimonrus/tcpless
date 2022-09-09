@@ -97,7 +97,9 @@ func HelloHandler(client tcpless.IClient) {
 	if err != nil {
 		panic(err)
 	}
-	client.Signature().Encryptor().RegisterType(&TestUserUserCreate{})
+	so.Do(func() {
+		client.Signature().Encryptor().RegisterType(&TestUserUserCreate{})
+	})
 	if entity.Number != 455000 {
 		panic("json handler does not works")
 	}
