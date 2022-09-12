@@ -38,7 +38,7 @@ func printMemStat() {
 	fmt.Println(memoryReport)
 }
 
-func resetRps(p *pool) {
+func resetRps() {
 	for range ticker.C {
 		fmt.Println("rps is: ", atomic.LoadInt32(&rps))
 		atomic.StoreInt32(&rps, 0)
@@ -56,7 +56,7 @@ func Hello(client IClient) {
 		fmt.Println(err)
 	}
 	resp := TestOkResponse{Msg: "ok"}
-	err = client.Ask("response", resp)
+	err = client.Ask("", resp)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -79,7 +79,7 @@ func TestServer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	go resetRps(server.pool)
+	go resetRps()
 	time.Sleep(time.Second * 2)
 	server.Stop()
 	time.Sleep(time.Second * 2)

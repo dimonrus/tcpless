@@ -39,7 +39,7 @@ func TestConcurrentServer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	go resetRps(server.pool)
+	go resetRps()
 	time.Sleep(time.Second * 30)
 	//c := make(chan os.Signal)
 	//<-c

@@ -29,7 +29,7 @@ func TestServerMemory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	go resetRps(server.pool)
+	go resetRps()
 	time.Sleep(time.Second * 20)
 }
 

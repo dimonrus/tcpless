@@ -14,6 +14,8 @@ TODO
 Example Concurrent file transfer
 Client Retry strategy
 Client Redial
+Readme How to use
+pub/sub
 
 #### If you find this project useful or want to support the author, you can send tokens to any of these wallets
 - Bitcoin: bc1qgx5c3n7q26qv0tngculjz0g78u6mzavy2vg3tf
