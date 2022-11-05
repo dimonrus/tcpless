@@ -1,9 +1,8 @@
-package main
+package tcpless
 
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/dimonrus/tcpless"
 )
 
 type (
@@ -32,7 +31,7 @@ func (d *JsonDataEncryptor) RegisterType(v any) {
 }
 
 // NewJSONDataEncryptor init json data encryptor
-func NewJSONDataEncryptor(buf *bytes.Buffer) tcpless.DataEncryptor {
+func NewJSONDataEncryptor(buf *bytes.Buffer) DataEncryptor {
 	return &JsonDataEncryptor{
 		encoder: json.NewEncoder(buf),
 		decoder: json.NewDecoder(buf),

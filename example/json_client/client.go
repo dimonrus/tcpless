@@ -38,6 +38,6 @@ func (c *JsonClient) Hello(user TestUser) (resp TestOkResponse, err error) {
 
 // NewJSONClient JSON client constructor
 func NewJSONClient(config *tcpless.Config, logger gocli.Logger) tcpless.IClient {
-	sig := tcpless.CreateSignature(nil, nil, NewJSONDataEncryptor)
+	sig := tcpless.CreateSignature(nil, nil, tcpless.NewJSONDataEncryptor)
 	return &JsonClient{Client: tcpless.CreateClient(config, &sig, logger)}
 }
