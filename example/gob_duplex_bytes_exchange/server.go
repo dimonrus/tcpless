@@ -34,7 +34,7 @@ func StartClient(config *tcpless.Config, app gocli.Application) {
 				return
 			}
 			for j := 0; j < requests; j++ {
-				err = client.Hello([]byte("hello my friend. How are you?"))
+				err := client.Hello([]byte("hello my friend. How are you?"))
 				if err != nil {
 					app.FailMessage(err.Error())
 					return

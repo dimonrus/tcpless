@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"github.com/dimonrus/gocli"
+	"github.com/dimonrus/porterr"
 	"github.com/dimonrus/tcpless"
 	"net"
 )
@@ -17,7 +18,7 @@ type JsonClient struct {
 var _ = (tcpless.IClient)(&JsonClient{})
 
 // Dial to server
-func (c *JsonClient) Dial() (net.Conn, error) {
+func (c *JsonClient) Dial() (net.Conn, porterr.IError) {
 	conn, err := c.Client.Dial()
 	if err != nil {
 		return nil, err

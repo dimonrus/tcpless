@@ -3,6 +3,7 @@ package tcpless
 import (
 	"bytes"
 	"github.com/dimonrus/gocli"
+	"github.com/dimonrus/porterr"
 	"net"
 )
 
@@ -16,7 +17,7 @@ type GobClient struct {
 }
 
 // Dial to server
-func (g *GobClient) Dial() (net.Conn, error) {
+func (g *GobClient) Dial() (net.Conn, porterr.IError) {
 	conn, err := g.Client.Dial()
 	if err != nil {
 		return nil, err

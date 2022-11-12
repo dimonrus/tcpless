@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"github.com/dimonrus/gocli"
+	"github.com/dimonrus/porterr"
 	"net"
 )
 
@@ -16,19 +17,19 @@ type ClientConstructor func(config *Config, logger gocli.Logger) IClient
 // IClient interface for communication
 type IClient interface {
 	// Ask custom type message
-	Ask(route string, v any) error
+	Ask(route string, v any) porterr.IError
 	// AskBytes send bytes
-	AskBytes(route string, b []byte) error
+	AskBytes(route string, b []byte) porterr.IError
 	// Ctx get context
 	Ctx() context.Context
 	// Dial to server
-	Dial() (net.Conn, error)
+	Dial() (net.Conn, porterr.IError)
 	// Logger get logger
 	Logger() gocli.Logger
 	// Parse current message
-	Parse(v any) error
+	Parse(v any) porterr.IError
 	// Read get signature from stream
-	Read() (ISignature, error)
+	Read() (ISignature, porterr.IError)
 	// SetStream set stream io
 	SetStream(stream Streamer)
 	// Signature return signature
@@ -52,13 +53,17 @@ type Client struct {
 }
 
 // Ask server route
-func (c *Client) Ask(route string, v any) error {
+func (c *Client) Ask(route string, v any) porterr.IError {
 	// reset buffer
 	c.stream.Buffer().Reset()
+	if e, ok := v.(porterr.IError); ok {
+		e.Origin().Pack(c.stream.Buffer())
+		return c.AskBytes(route, c.stream.Buffer().Bytes())
+	}
 	// encode v to bytes
 	err := c.sig.Encryptor().Encode(v)
 	if err != nil {
-		return err
+		return porterr.New(porterr.PortErrorEncoder, err.Error())
 	}
 	// create signature
 	s := Signature{
@@ -69,11 +74,14 @@ func (c *Client) Ask(route string, v any) error {
 	c.stream.Buffer().Reset()
 	// send data to stream
 	_, err = c.stream.Connection().Write(s.Encode(c.stream.Buffer()))
-	return err
+	if err != nil {
+		return porterr.New(porterr.PortErrorIO, err.Error())
+	}
+	return nil
 }
 
 // AskBytes send bytes
-func (c *Client) AskBytes(route string, b []byte) error {
+func (c *Client) AskBytes(route string, b []byte) porterr.IError {
 	// reset buffer
 	c.stream.Buffer().Reset()
 	// create signature
@@ -83,19 +91,30 @@ func (c *Client) AskBytes(route string, b []byte) error {
 	}
 	// write bytes into connection
 	_, err := c.stream.Connection().Write(s.Encode(c.stream.Buffer()))
-	return err
+	if err != nil {
+		return porterr.New(porterr.PortErrorIO, err.Error())
+	}
+	return nil
 }
 
 // Dial to server
-func (c *Client) Dial() (net.Conn, error) {
+func (c *Client) Dial() (net.Conn, porterr.IError) {
 	if c.options.config.TLS.Enabled {
 		config, err := c.options.config.TLS.LoadTLSConfig()
 		if err != nil {
-			return nil, err
+			return nil, porterr.New(porterr.PortErrorConflict, err.Error())
 		}
-		return tls.Dial(c.options.config.Address.Network(), c.options.config.Address.String(), config)
+		conn, err := tls.Dial(c.options.config.Address.Network(), c.options.config.Address.String(), config)
+		if err != nil {
+			return nil, porterr.New(porterr.PortErrorConnection, err.Error())
+		}
+		return conn, nil
 	}
-	return net.Dial(c.options.config.Address.Network(), c.options.config.Address.String())
+	conn, err := net.Dial(c.options.config.Address.Network(), c.options.config.Address.String())
+	if err != nil {
+		return nil, porterr.New(porterr.PortErrorConnection, err.Error())
+	}
+	return conn, nil
 }
 
 // Ctx get context
@@ -109,34 +128,46 @@ func (c *Client) Logger() gocli.Logger {
 }
 
 // Parse data to type
-func (c *Client) Parse(v any) error {
-	var err error
+func (c *Client) Parse(v any) porterr.IError {
+	var e porterr.IError
 	// if signature is empty
 	if c.sig.Len() == 0 {
 		// read data for io
-		_, err = c.Read()
+		_, err := c.Read()
 		if err != nil {
-			return err
+			return porterr.New(porterr.PortErrorIO, err.Error())
 		}
 	}
 	// clear buffer after read
 	c.stream.Buffer().Reset()
+	// check if portable error
+	e = porterr.UnPack(c.sig.Data())
+	if e != nil {
+		return e
+	}
 	// write in buffer only data
 	c.stream.Buffer().Write(c.sig.Data())
 	// Reset signature
 	c.sig.Reset()
 	// decode value
-	return c.Signature().Encryptor().Decode(v)
+	err := c.Signature().Encryptor().Decode(v)
+	if err != nil {
+		return porterr.New(porterr.PortErrorDecoder, err.Error())
+	}
+	return nil
 }
 
 // Read get signature from stream
-func (c *Client) Read() (ISignature, error) {
+func (c *Client) Read() (ISignature, porterr.IError) {
 	// clear buffer before
 	c.stream.Buffer().Reset()
 	// decode message to signature
 	err := c.sig.Decode(c.stream.Connection(), c.stream.Buffer())
+	if err != nil {
+		return nil, porterr.New(porterr.PortErrorDecoder, err.Error())
+	}
 	// return signature and error
-	return c.sig, err
+	return c.sig, nil
 }
 
 // SetStream set stream io

@@ -36,6 +36,7 @@ func StartClient(config *tcpless.Config, app gocli.Application) {
 			}
 			resp := TestOkResponse{}
 			for j := 0; j < requests; j++ {
+				var err error
 				resp, err = client.Hello(getTestUser())
 				if err != nil {
 					app.FailMessage(err.Error())

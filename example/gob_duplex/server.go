@@ -35,7 +35,7 @@ func StartClient(config *tcpless.Config, app gocli.Application) {
 			}
 			client.Signature().Encryptor().RegisterType(&TestUserUserCreate{})
 			for j := 0; j < requests; j++ {
-				err = client.Hello(getTestUser())
+				err := client.Hello(getTestUser())
 				if err != nil {
 					app.FailMessage(err.Error())
 					return
