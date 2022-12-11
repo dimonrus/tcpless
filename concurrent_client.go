@@ -127,7 +127,9 @@ func (c *concurrentClient) Call(route string, request chan any, processor Handle
 					c.options.logger.Errorln(err)
 					return
 				}
-				processor(client)
+				if processor != nil {
+					processor(client)
+				}
 			}
 		}(route, request)
 	}
