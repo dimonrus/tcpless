@@ -3,7 +3,7 @@ module github.com/dimonrus/tcpless
 go 1.19
 
 require (
-	github.com/dimonrus/gocli v0.10.0
+	github.com/dimonrus/gocli v0.10.1
 	github.com/dimonrus/porterr v1.13.1
 )
 
