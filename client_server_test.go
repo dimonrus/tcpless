@@ -12,6 +12,7 @@ import (
 
 var (
 	rps          int32
+	counter      int32
 	ticker       = time.NewTicker(time.Millisecond * 1000)
 	m            runtime.MemStats
 	memoryReport = map[string]uint64{
@@ -41,6 +42,7 @@ func printMemStat() {
 func resetRps() {
 	for range ticker.C {
 		fmt.Println("rps is: ", atomic.LoadInt32(&rps))
+		fmt.Println("counter is: ", atomic.LoadInt32(&counter))
 		atomic.StoreInt32(&rps, 0)
 		printMemStat()
 	}

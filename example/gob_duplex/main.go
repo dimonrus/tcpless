@@ -18,7 +18,7 @@ var cliArgs = gocli.Arguments{"app": gocli.Argument{
 
 func InitApp() {
 	var cfg config.Config
-	configPath, _ := gocli.DNApp{}.GetAbsolutePath("config", "example/gob_duplex")
+	configPath, _ := (&gocli.DNApp{}).GetAbsolutePath("config", "example/gob_duplex")
 	App = gocli.NewApplication(os.Getenv("ENV"), configPath, &cfg)
 	App.SetLogger(gocli.NewLogger(gocli.LoggerConfig{}))
 	App.ParseFlags(&cliArgs)

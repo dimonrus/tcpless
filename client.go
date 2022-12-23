@@ -1,11 +1,13 @@
 package tcpless
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"github.com/dimonrus/gocli"
 	"github.com/dimonrus/porterr"
 	"net"
+	"time"
 )
 
 // Check for IClient interface
@@ -73,11 +75,39 @@ func (c *Client) Ask(route string, v any) porterr.IError {
 	// reset buffer
 	c.stream.Buffer().Reset()
 	// send data to stream
-	_, err = c.stream.Connection().Write(s.Encode(c.stream.Buffer()))
-	if err != nil {
-		return porterr.New(porterr.PortErrorIO, err.Error())
+	return c.send(s.Encode(c.stream.Buffer()))
+}
+
+// send data to stream
+func (c *Client) send(data []byte) porterr.IError {
+	for {
+		_, err := c.stream.Connection().Write(data)
+		if err == nil {
+			return nil
+		} else {
+			e := c.reDial(err)
+			if e != nil {
+				return e
+			}
+		}
 	}
-	return nil
+}
+
+// redial
+func (c *Client) reDial(err error) porterr.IError {
+	if oe, ok := err.(*net.OpError); ok && (oe.Op == "write") {
+		for {
+			time.Sleep(c.options.config.Limits.RedialTimeout)
+			conn, e := c.Dial()
+			if e != nil && c.Logger() != nil {
+				c.Logger().Errorln(e.Error())
+			} else {
+				c.SetStream(NewConnection(conn, bytes.NewBuffer(make([]byte, 0, MinimumSharedBufferSize)), 0))
+				return nil
+			}
+		}
+	}
+	return porterr.New(porterr.PortErrorIO, err.Error())
 }
 
 // AskBytes send bytes
@@ -89,28 +119,27 @@ func (c *Client) AskBytes(route string, b []byte) porterr.IError {
 		route: []byte(route),
 		data:  b,
 	}
-	// write bytes into connection
-	_, err := c.stream.Connection().Write(s.Encode(c.stream.Buffer()))
-	if err != nil {
-		return porterr.New(porterr.PortErrorIO, err.Error())
-	}
-	return nil
+	// send data to stream
+	return c.send(s.Encode(c.stream.Buffer()))
 }
 
 // Dial to server
 func (c *Client) Dial() (net.Conn, porterr.IError) {
+	var err error
+	var conn net.Conn
 	if c.options.config.TLS.Enabled {
-		config, err := c.options.config.TLS.LoadTLSConfig()
+		var config *tls.Config
+		config, err = c.options.config.TLS.LoadTLSConfig()
 		if err != nil {
 			return nil, porterr.New(porterr.PortErrorConflict, err.Error())
 		}
-		conn, err := tls.Dial(c.options.config.Address.Network(), c.options.config.Address.String(), config)
+		conn, err = tls.Dial(c.options.config.Address.Network(), c.options.config.Address.String(), config)
 		if err != nil {
 			return nil, porterr.New(porterr.PortErrorConnection, err.Error())
 		}
 		return conn, nil
 	}
-	conn, err := net.Dial(c.options.config.Address.Network(), c.options.config.Address.String())
+	conn, err = net.Dial(c.options.config.Address.Network(), c.options.config.Address.String())
 	if err != nil {
 		return nil, porterr.New(porterr.PortErrorConnection, err.Error())
 	}
