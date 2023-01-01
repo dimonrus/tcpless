@@ -97,7 +97,7 @@ func (c *Client) send(data []byte) porterr.IError {
 func (c *Client) reDial(err error) porterr.IError {
 	if oe, ok := err.(*net.OpError); ok && (oe.Op == "write") {
 		for {
-			time.Sleep(c.options.config.Limits.RedialTimeout)
+			time.Sleep(c.options.config.Limits.RedialTimeout * time.Second)
 			conn, e := c.Dial()
 			if e != nil && c.Logger() != nil {
 				c.Logger().Errorln(e.Error())

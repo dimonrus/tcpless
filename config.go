@@ -45,6 +45,6 @@ type ConnectionLimit struct {
 	MaxIdle time.Duration `yaml:"maxIdle"`
 	// Max process body size
 	SharedBufferSize int32 `yaml:"sharedBufferSize"`
-	// RedialTimeout timeout for redial
+	// RedialTimeout timeout for redial. Specify in second
 	RedialTimeout time.Duration `yaml:"redialTimeout"`
 }

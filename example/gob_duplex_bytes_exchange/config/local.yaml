@@ -7,3 +7,4 @@ tcpLess:
     maxConnections: 10
     maxIdle: 60
     sharedBufferSize: 2048
+    redialTimeout: 1
