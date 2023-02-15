@@ -36,7 +36,7 @@ func BenchmarkGobClient_Read(b *testing.B) {
 // pkg: github.com/dimonrus/tcpless
 // cpu: Intel(R) Core(TM) i5-8279U CPU @ 2.40GHz
 // BenchmarkGobClient_Parse
-// BenchmarkGobClient_Parse-8   	  339273	      3188 ns/op	     120 B/op	       5 allocs/op
+// BenchmarkGobClient_Parse-8   	  336388	      3347 ns/op	     168 B/op	       6 allocs/op
 func BenchmarkGobClient_Parse(b *testing.B) {
 	client, server := getTestClientServer()
 

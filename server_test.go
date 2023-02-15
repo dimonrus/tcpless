@@ -15,7 +15,7 @@ func getTestConfig() *Config {
 			MaxConnections:   10,
 			SharedBufferSize: 1024,
 			MaxIdle:          time.Second * 10,
-			RedialTimeout:    time.Second,
+			RedialTimeout:    1,
 		},
 	}
 }

@@ -52,6 +52,7 @@ var so = &sync.Once{}
 
 func Hello(client IClient) {
 	atomic.AddInt32(&rps, 1)
+	atomic.AddInt32(&counter, 1)
 	entity := TestUser{}
 	err := client.Parse(&entity)
 	if err != nil {

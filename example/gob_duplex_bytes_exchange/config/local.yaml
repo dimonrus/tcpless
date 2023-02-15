@@ -4,7 +4,7 @@ tcpLess:
     ip: 0.0.0.0
     port: 900
   limits:
-    maxConnections: 10
+    maxConnections: 2
     maxIdle: 60
     sharedBufferSize: 2048
     redialTimeout: 1

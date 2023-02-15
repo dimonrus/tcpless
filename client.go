@@ -62,26 +62,21 @@ func (c *Client) Ask(route string, v any) porterr.IError {
 		e.Origin().Pack(c.stream.Buffer())
 		return c.AskBytes(route, c.stream.Buffer().Bytes())
 	}
-	// encode v to bytes
-	err := c.sig.Encryptor().Encode(v)
-	if err != nil {
-		return porterr.New(porterr.PortErrorEncoder, err.Error())
-	}
-	// create signature
-	s := Signature{
-		route: []byte(route),
-		data:  c.stream.Buffer().Bytes(),
-	}
-	// reset buffer
-	c.stream.Buffer().Reset()
-	// send data to stream
-	return c.send(s.Encode(c.stream.Buffer()))
-}
-
-// send data to stream
-func (c *Client) send(data []byte) porterr.IError {
 	for {
-		_, err := c.stream.Connection().Write(data)
+		// encode v to bytes
+		err := c.sig.Encryptor().Encode(v)
+		if err != nil {
+			return porterr.New(porterr.PortErrorEncoder, err.Error())
+		}
+		// create signature
+		s := Signature{
+			route: []byte(route),
+			data:  c.stream.Buffer().Bytes(),
+		}
+		// reset buffer
+		c.stream.Buffer().Reset()
+		// send data to stream
+		_, err = c.stream.Connection().Write(s.Encode(c.stream.Buffer()))
 		if err == nil {
 			return nil
 		} else {
@@ -119,8 +114,17 @@ func (c *Client) AskBytes(route string, b []byte) porterr.IError {
 		route: []byte(route),
 		data:  b,
 	}
-	// send data to stream
-	return c.send(s.Encode(c.stream.Buffer()))
+	for {
+		_, err := c.stream.Connection().Write(s.Encode(c.stream.Buffer()))
+		if err == nil {
+			return nil
+		} else {
+			e := c.reDial(err)
+			if e != nil {
+				return e
+			}
+		}
+	}
 }
 
 // Dial to server

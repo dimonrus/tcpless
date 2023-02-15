@@ -19,7 +19,7 @@ func StartServer(config *tcpless.Config, application gocli.Application) *tcpless
 
 // StartClient start client and make call
 func StartClient(config *tcpless.Config, app gocli.Application) {
-	requests := 5
+	requests := 50
 	parallel := int(config.Limits.MaxConnections)
 
 	wg := sync.WaitGroup{}
