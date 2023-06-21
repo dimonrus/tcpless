@@ -12,7 +12,9 @@ import (
 func MemoryCheck(client IClient) {
 	atomic.AddInt32(&rps, 1)
 	atomic.AddInt32(&counter, 1)
-	fmt.Println(string(client.Signature().Data()))
+	if string(client.Signature().Data()) != "how about memory" {
+		panic("wrong")
+	}
 }
 
 func MemoryHandler(handler Handler) Handler {
@@ -33,8 +35,8 @@ func TestServerMemory(t *testing.T) {
 
 func TestClientMemory(t *testing.T) {
 	config := getTestConfig()
-	requests := 20
-	parallel := 2
+	requests := 20000000
+	parallel := 8
 	wg := sync.WaitGroup{}
 	wg.Add(parallel)
 	for i := 0; i < parallel; i++ {
@@ -46,12 +48,12 @@ func TestClientMemory(t *testing.T) {
 				fmt.Println(err)
 			}
 			for j := 0; j < requests; j++ {
-				time.Sleep(time.Millisecond * 3333)
 				err = client.AskBytes("memory", []byte("how about memory"))
 				if err != nil {
 					fmt.Println(err)
 					return
 				}
+				time.Sleep(time.Microsecond)
 			}
 			_ = client.Stream().Release()
 		}()
