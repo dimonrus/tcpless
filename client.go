@@ -92,7 +92,7 @@ func (c *Client) Ask(route string, v any) porterr.IError {
 func (c *Client) reDial(err error) porterr.IError {
 	if oe, ok := err.(*net.OpError); ok && (oe.Op == "write") {
 		for {
-			time.Sleep(c.options.config.Limits.RedialTimeout * time.Second)
+			time.Sleep(c.options.config.Limits.RedialTimeout)
 			conn, e := c.Dial()
 			if e != nil && c.Logger() != nil {
 				c.Logger().Errorln(e.Error())

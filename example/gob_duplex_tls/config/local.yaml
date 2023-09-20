@@ -5,9 +5,9 @@ tcpLess:
     port: 900
   limits:
     maxConnections: 10
-    maxIdle: 60
+    maxIdle: 60s
     sharedBufferSize: 2048
-    redialTimeout: 1
+    redialTimeout: 1s
   tls:
     enabled: true
     caPath: resource/ca.crt
