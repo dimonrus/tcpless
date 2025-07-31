@@ -10,7 +10,7 @@ import (
 
 var App gocli.Application
 
-var cliArgs = gocli.Arguments{"app": gocli.Argument{
+var cliArgs = gocli.ArgumentMap{"app": gocli.Argument{
 	Type:  "string",
 	Label: "Application type",
 	Name:  "app",
@@ -18,10 +18,10 @@ var cliArgs = gocli.Arguments{"app": gocli.Argument{
 
 func InitApp() {
 	var cfg config.Config
-	configPath, _ := (&gocli.DNApp{}).GetAbsolutePath("config", "example/gob_duplex")
+	configPath, _ := (&gocli.DNApp{}).GetAbsolutePath("config", "example/gob_duplex_concurent_client")
 	App = gocli.NewApplication(os.Getenv("ENV"), configPath, &cfg)
 	App.SetLogger(gocli.NewLogger(gocli.LoggerConfig{}))
-	App.ParseFlags(&cliArgs)
+	App.ParseFlags(cliArgs)
 }
 
 func main() {
